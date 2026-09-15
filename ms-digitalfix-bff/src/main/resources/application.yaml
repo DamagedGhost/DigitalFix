@@ -1,3 +1,16 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: ms-digitalfix-bff
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/0783cd15-ad70-4f7c-89bd-1c62bc52f411/v2.0
+          audiences:
+            - 699ac754-32ba-4fd6-aaf8-bac4850673b8
+            - api://699ac754-32ba-4fd6-aaf8-bac4850673b8
+workorders:
+  base-url: http://localhost:8081
