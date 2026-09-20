@@ -26,8 +26,9 @@ export function useApi() {
         const headers = new Headers(options.headers);
         headers.set("Authorization", `Bearer ${response.accessToken}`);
 
-        // Aquí apuntamos por defecto a la URL de tu BFF configurada en el .env
-        const baseUrl = import.meta.env.VITE_BFF_URL || "http://localhost:8080/api";
+        // Cambio en URL base: URL definida en VITE_BFF_URL o por defecto "/api"
+        const configuredBaseUrl = import.meta.env.VITE_BFF_URL || "/api";
+        const baseUrl = configuredBaseUrl.replace(/\/$/, "");
         
         return fetch(`${baseUrl}${endpoint}`, {
             ...options,
