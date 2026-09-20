@@ -30,7 +30,7 @@ public class WorkOrderProxyController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('Admin', 'Supervi', 'Cliente', 'Auditor')")
+    @PreAuthorize("hasAnyAuthority('Cliente', 'Supervi')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
         return forward(() -> workOrdersRestClient.get()
                 .uri("/api/workorders/{id}", id)
@@ -39,7 +39,7 @@ public class WorkOrderProxyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('Admin', 'Supervi', 'Cliente', 'Auditor')")
+    @PreAuthorize("hasAnyAuthority('Cliente', 'Supervi')")
     public ResponseEntity<String> list(@RequestParam(required = false) String status) {
         return forward(() -> workOrdersRestClient.get()
                 .uri(uriBuilder -> {
@@ -54,7 +54,7 @@ public class WorkOrderProxyController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('Supervi')")
+    @PreAuthorize("hasAnyAuthority('Supervi')")
     public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> workOrdersRestClient.put()
                 .uri("/api/workorders/{id}/status", id)

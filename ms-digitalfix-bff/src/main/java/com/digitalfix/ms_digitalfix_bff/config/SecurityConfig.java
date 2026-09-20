@@ -22,7 +22,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/api/workorders/**").hasRole("Admin")
+                        .requestMatchers("/api/workorders/**").hasAnyAuthority("Supervi", "Cliente")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -35,7 +35,7 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        authoritiesConverter.setAuthorityPrefix("ROLE_");
+        authoritiesConverter.setAuthorityPrefix(""); // antes: "ROLE_"
         authoritiesConverter.setAuthoritiesClaimName("roles");
 
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
