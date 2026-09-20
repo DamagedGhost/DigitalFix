@@ -1,3 +1,20 @@
+server:
+  port: 8083
+
 spring:
   application:
     name: ms-digitalfix-catalog
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    table: flyway_schema_history_catalog
+    baseline-on-migrate: true
+    baseline-version: "0"
+    locations: classpath:db/migration
