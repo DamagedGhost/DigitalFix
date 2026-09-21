@@ -45,7 +45,7 @@ export default function Ordenes() {
         setIsLoading(true);
         setError("");
         try {
-            const response = await fetchWithToken("/workorders");
+            const response = await fetchWithToken("/api/v1/workorders");
             if (!response.ok) throw new Error(`No se pudieron cargar las órdenes (${response.status})`);
             setOrdenes(await response.json());
         } catch (loadError) {
@@ -64,7 +64,7 @@ export default function Ordenes() {
         setIsSaving(true);
         setError("");
         try {
-            const response = await fetchWithToken("/workorders", {
+            const response = await fetchWithToken("/api/v1/workorders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ clientName, description }),
@@ -87,7 +87,7 @@ export default function Ordenes() {
         setIsSaving(true);
         setError("");
         try {
-            const response = await fetchWithToken(`/workorders/${selectedOrder.id}/status`, {
+            const response = await fetchWithToken(`/api/v1/workorders/${selectedOrder.id}/status`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: selectedStatus, technicianName: technicianName || null }),

@@ -9,8 +9,10 @@ services:
       - "8080:8080"
     environment:
       - WORKORDERS_BASE_URL=http://workorders:8081
+      - CATALOG_BASE_URL=http://catalog:8083
     depends_on:
       - workorders
+      - catalog
 
   frontend:
     build:
@@ -32,7 +34,22 @@ services:
     expose:
       - "8081"
     environment:
-      # Apuntamos al nombre del contenedor de la base de datos
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/digitalfixdb
+      - SPRING_DATASOURCE_USERNAME=tu_usuario
+      - SPRING_DATASOURCE_PASSWORD=tu_password
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+  catalog:
+    build: ./ms-digitalfix-catalog
+    container_name: catalog-app
+    restart: always
+    env_file:
+      - .env
+    expose:
+      - "8083"
+    environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/digitalfixdb
       - SPRING_DATASOURCE_USERNAME=tu_usuario
       - SPRING_DATASOURCE_PASSWORD=tu_password
