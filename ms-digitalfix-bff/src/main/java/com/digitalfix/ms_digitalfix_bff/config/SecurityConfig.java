@@ -23,6 +23,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/workorders/**").hasAnyAuthority("Supervi", "Cliente")
+                        .requestMatchers("/api/catalog/**").hasAnyAuthority("Admin")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

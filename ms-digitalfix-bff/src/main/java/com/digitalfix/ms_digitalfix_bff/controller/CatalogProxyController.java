@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @RestController
-@RequestMapping("/api/catalog/services")
+@RequestMapping("/api/catalog")
 public class CatalogProxyController {
 
     private final RestClient catalogRestClient;
@@ -22,7 +22,7 @@ public class CatalogProxyController {
     @PreAuthorize("hasAnyAuthority('Admin')")
     public ResponseEntity<String> create(@RequestBody String body) {
         return forward(() -> catalogRestClient.post()
-                .uri("/api/catalog/services")
+            .uri("/api/catalog/services")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
@@ -33,7 +33,7 @@ public class CatalogProxyController {
     @PreAuthorize("hasAnyAuthority('Admin')")
     public ResponseEntity<String> list() {
         return forward(() -> catalogRestClient.get()
-                .uri("/api/catalog/services")
+            .uri("/api/catalog/services")
                 .retrieve()
                 .toEntity(String.class));
     }
@@ -42,7 +42,7 @@ public class CatalogProxyController {
     @PreAuthorize("hasAnyAuthority('Admin')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
         return forward(() -> catalogRestClient.get()
-                .uri("/api/catalog/services/{id}", id)
+            .uri("/api/catalog/services/{id}", id)
                 .retrieve()
                 .toEntity(String.class));
     }
@@ -51,7 +51,7 @@ public class CatalogProxyController {
     @PreAuthorize("hasAnyAuthority('Admin')")
     public ResponseEntity<String> updateTarifaStock(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> catalogRestClient.put()
-                .uri("/api/catalog/services/{id}", id)
+            .uri("/api/catalog/services/{id}", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()

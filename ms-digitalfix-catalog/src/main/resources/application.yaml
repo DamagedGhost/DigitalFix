@@ -5,6 +5,12 @@ spring:
   application:
     name: ms-digitalfix-catalog
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/0783cd15-ad70-4f7c-89bd-1c62bc52f411/v2.0
+
   jpa:
     hibernate:
       ddl-auto: validate

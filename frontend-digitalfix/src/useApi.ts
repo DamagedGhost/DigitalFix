@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useMsal } from "@azure/msal-react";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { loginRequest } from "./authConfig";
@@ -5,7 +6,7 @@ import { loginRequest } from "./authConfig";
 export function useApi() {
     const { instance, accounts } = useMsal();
 
-    const fetchWithToken = async (endpoint: string, options: RequestInit = {}) => {
+    const fetchWithToken = useCallback(async (endpoint: string, options: RequestInit = {}) => {
         const account = accounts[0] || instance.getActiveAccount();
         if (!account) throw new Error("No hay una cuenta activa en DigitalFix");
 
@@ -34,7 +35,7 @@ export function useApi() {
             ...options,
             headers,
         });
-    };
+    }, [accounts, instance]);
 
     return { fetchWithToken };
 }
