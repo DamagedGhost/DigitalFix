@@ -1,4 +1,4 @@
-# DigitalFix (Pedidos360)
+# DigitalFix
 
 Plataforma cloud native para la gestión de órdenes de mantención eléctrica de clientes empresariales. El sistema permite crear, consultar y administrar órdenes de trabajo, controlar el catálogo de servicios y repuestos, y aplicar autorización por rol mediante Microsoft Entra ID.
 
