@@ -30,7 +30,7 @@ export default function Catalog() {
         setError("");
         try {
 
-            const response = await fetchWithToken("/catalog");
+            const response = await fetchWithToken("/api/v1/catalog");
             if (!response.ok) {
                 if (response.status === 403) throw new Error("No tienes permisos para ver el catálogo.");
                 throw new Error(`Error al cargar el catálogo (${response.status})`);
@@ -53,7 +53,7 @@ export default function Catalog() {
         setIsSaving(true);
         setError("");
         try {
-            const response = await fetchWithToken("/catalog", {
+            const response = await fetchWithToken("/api/v1/catalog", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 

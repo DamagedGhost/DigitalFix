@@ -28,7 +28,7 @@ export default function Dashboard() {
     useEffect(() => {
         const loadRecentOrders = async () => {
             try {
-                const response = await fetchWithToken("/workorders");
+                const response = await fetchWithToken("/api/v1/workorders");
                 if (!response.ok) throw new Error(`Error al obtener órdenes (${response.status})`);
                 
                 const data: WorkOrder[] = await response.json();
