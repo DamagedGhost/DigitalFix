@@ -10,7 +10,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @RestController
-@RequestMapping("/api/catalog")
+@RequestMapping({"/api/catalog", "/api/v1/catalog"})
 public class CatalogProxyController {
 
     private final RestClient catalogRestClient;
@@ -20,7 +20,7 @@ public class CatalogProxyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador')")
     public ResponseEntity<String> create(@RequestBody String body) {
         return forward(() -> catalogRestClient.post()
                 .uri("/api/catalog/services")
@@ -31,7 +31,7 @@ public class CatalogProxyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('Admin', 'Supervi')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> list() {
         return forward(() -> catalogRestClient.get()
                 .uri("/api/catalog/services")
@@ -40,7 +40,7 @@ public class CatalogProxyController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('Admin', 'Supervi')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
         return forward(() -> catalogRestClient.get()
                 .uri("/api/catalog/services/{id}", id)
@@ -49,7 +49,7 @@ public class CatalogProxyController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador')")
     public ResponseEntity<String> updateTarifaStock(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> catalogRestClient.put()
                 .uri("/api/catalog/services/{id}", id)

@@ -27,11 +27,14 @@ export function useApi() {
         const headers = new Headers(options.headers);
         headers.set("Authorization", `Bearer ${response.accessToken}`);
 
-        // Cambio en URL base: URL definida en VITE_BFF_URL o por defecto "/api"
-        const configuredBaseUrl = import.meta.env.VITE_BFF_URL || "/api";
-        const baseUrl = configuredBaseUrl.replace(/\/$/, "");
+        // URL base: VITE_BFF_URL en desarrollo directo o relativo para Nginx
+        const configuredBaseUrl = (import.meta.env.VITE_BFF_URL || "").replace(/\/$/, "");
+        let path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+        if (!configuredBaseUrl && !path.startsWith("/api")) {
+            path = `/api${path}`;
+        }
         
-        return fetch(`${baseUrl}${endpoint}`, {
+        return fetch(`${configuredBaseUrl}${path}`, {
             ...options,
             headers,
         });

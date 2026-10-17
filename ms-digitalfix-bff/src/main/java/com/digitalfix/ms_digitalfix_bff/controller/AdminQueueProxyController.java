@@ -25,7 +25,7 @@ import java.util.function.Supplier;
  * pero solo si el usuario tiene el rol Admin (vale para todo el controller).
  */
 @RestController
-@RequestMapping("/api/admin/queues")
+@RequestMapping({"/api/admin/queues", "/api/v1/admin/queues"})
 @PreAuthorize("hasRole('Admin')")
 public class AdminQueueProxyController {
 
@@ -86,7 +86,7 @@ public class AdminQueueProxyController {
                 .toEntity(String.class));
     }
 
-    // Reprocesar los mensajes de una DLQ
+    // Reprocesar los mensajes de la DLQ
     @PostMapping("/{flow}/reprocess")
     public ResponseEntity<String> reprocess(@PathVariable String flow,
                                             @RequestParam(defaultValue = "100") int max) {
@@ -99,7 +99,7 @@ public class AdminQueueProxyController {
                 .toEntity(String.class));
     }
 
-    // Devuelve tal cual el estado y el cuerpo que respondió notify (400, 404, 409...)
+    // Si notify no responde, devuelve 503 con cuerpo JSON en vez de reventar
     private ResponseEntity<String> forward(Supplier<ResponseEntity<String>> call) {
         try {
             return call.get();
@@ -109,10 +109,9 @@ public class AdminQueueProxyController {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(ex.getResponseBodyAsString());
         } catch (ResourceAccessException ex) {
-            // notify está caído o no responde
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"error\":\"El servicio de notificaciones no está disponible\"}");
+                    .body("{\"status\":503,\"error\":\"Service Unavailable\",\"message\":\"El servicio de notificaciones no responde\"}");
         }
     }
 }

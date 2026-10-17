@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @RestController
-@RequestMapping("/api/workorders")
+@RequestMapping({"/api/workorders", "/api/v1/workorders"})
 public class WorkOrderProxyController {
 
     private final RestClient workOrdersRestClient;
@@ -22,7 +22,7 @@ public class WorkOrderProxyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('Cliente', 'Supervi')")
+    @PreAuthorize("hasAnyRole('Cliente', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> create(@RequestBody String body) {
         return forward(() -> workOrdersRestClient.post()
                 .uri("/api/workorders")
@@ -33,7 +33,7 @@ public class WorkOrderProxyController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('Admin', 'Supervi', 'Cliente', 'Auditor')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor', 'Cliente', 'Auditor')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
         return forward(() -> workOrdersRestClient.get()
                 .uri("/api/workorders/{id}", id)
@@ -42,7 +42,7 @@ public class WorkOrderProxyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('Admin', 'Supervi', 'Cliente', 'Auditor')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor', 'Cliente', 'Auditor')")
     public ResponseEntity<String> list(@RequestParam(required = false) String status) {
         return forward(() -> workOrdersRestClient.get()
                 .uri(uriBuilder -> {
@@ -57,7 +57,7 @@ public class WorkOrderProxyController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('Supervi')")
+    @PreAuthorize("hasAnyRole('Supervi', 'Supervisor')")
     public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> workOrdersRestClient.put()
                 .uri("/api/workorders/{id}/status", id)
