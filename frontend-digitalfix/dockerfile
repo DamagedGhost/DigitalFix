@@ -1,0 +1,29 @@
+# --- Stage 1: Construcción (Build) ---
+FROM node:22-alpine AS build
+WORKDIR /app/frontend-digitalfix
+
+# Dependencias y compilación
+COPY frontend-digitalfix/package*.json ./
+RUN npm ci
+COPY frontend-digitalfix/ ./
+COPY .env /app/.env
+RUN npm run build
+
+
+# --- Stage 2: Imagen final para producción (Nginx) ---
+FROM nginx:alpine AS production
+
+# Archivos compilados
+COPY --from=build /app/frontend-digitalfix/dist /usr/share/nginx/html
+COPY frontend-digitalfix/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+
+# Ajuste de permisos para Nginx
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown nginx:nginx /var/run/nginx.pid
+
+# Comando para iniciar Nginx en primer plano
+CMD ["nginx", "-g", "daemon off;"]

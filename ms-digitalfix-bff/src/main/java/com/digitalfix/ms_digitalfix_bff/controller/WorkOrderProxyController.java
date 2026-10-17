@@ -1,5 +1,6 @@
 package com.digitalfix.ms_digitalfix_bff.controller;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,7 @@ public class WorkOrderProxyController {
 
     private final RestClient workOrdersRestClient;
 
-    public WorkOrderProxyController(RestClient workOrdersRestClient) {
+    public WorkOrderProxyController(@Qualifier("workOrdersRestClient") RestClient workOrdersRestClient) {
         this.workOrdersRestClient = workOrdersRestClient;
     }
 

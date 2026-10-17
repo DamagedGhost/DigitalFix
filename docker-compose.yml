@@ -1,29 +1,117 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: digitalfix-postgres
-    restart: unless-stopped
+  bff:
+    build: ./ms-digitalfix-bff
+    container_name: bff-app
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
     environment:
-      POSTGRES_DB: digitalfix
-      POSTGRES_USER: digitalfix
-      POSTGRES_PASSWORD: digitalfix
+      - WORKORDERS_BASE_URL=http://workorders:8081
+      - CATALOG_BASE_URL=http://catalog:8083
+      - NOTIFY_BASE_URL=http://notify:8084
+    depends_on:
+      - workorders
+      - catalog
+      - notify
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend-digitalfix/dockerfile
+    container_name: front-app
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - bff
+
+  workorders:
+    build: ./ms-digitalfix-workorders
+    container_name: workorders-app
+    restart: always
+    env_file:
+      - .env
+    expose:
+      - "8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/digitalfixdb
+      - SPRING_DATASOURCE_USERNAME=tu_usuario
+      - SPRING_DATASOURCE_PASSWORD=tu_password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=digitalfix
+      - SPRING_RABBITMQ_PASSWORD=digitalfix
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  catalog:
+    build: ./ms-digitalfix-catalog
+    container_name: catalog-app
+    restart: always
+    env_file:
+      - .env
+    expose:
+      - "8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/digitalfixdb
+      - SPRING_DATASOURCE_USERNAME=tu_usuario
+      - SPRING_DATASOURCE_PASSWORD=tu_password
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+  notify:
+    build: ./ms-digitalfix-notify
+    container_name: notify-app
+    restart: always
+    env_file:
+      - .env
+    expose:
+      - "8084"
+    environment:
+      - RABBIT_HOST=rabbitmq
+      - RABBIT_PORT=5672
+      - RABBIT_USER=digitalfix
+      - RABBIT_PASS=digitalfix
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: digitalfix-postgres
+    restart: always
     ports:
       - "5432:5432"
+    environment:
+      - POSTGRES_DB=digitalfixdb
+      - POSTGRES_USER=tu_usuario
+      - POSTGRES_PASSWORD=tu_password
     volumes:
-      - digitalfix_pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tu_usuario -d digitalfixdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: digitalfix-rabbitmq
-    restart: unless-stopped
+    restart: always
     environment:
-      RABBITMQ_DEFAULT_USER: digitalfix
-      RABBITMQ_DEFAULT_PASS: digitalfix
+      - RABBITMQ_DEFAULT_USER=digitalfix
+      - RABBITMQ_DEFAULT_PASS=digitalfix
     ports:
-      - "5672:5672"     # puerto que usan los microservicios
-      - "15672:15672"   # panel web
+      - "5672:5672"     # AMQP para microservicios
+      - "15672:15672"   # Panel Web de Gestión
     volumes:
-      - digitalfix_rabbitdata:/var/lib/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -31,5 +119,5 @@ services:
       retries: 5
 
 volumes:
-  digitalfix_pgdata:
-  digitalfix_rabbitdata:
+  pgdata:
+  rabbitmq_data:

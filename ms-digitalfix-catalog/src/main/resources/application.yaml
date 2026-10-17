@@ -1,3 +1,26 @@
+server:
+  port: 8083
+
 spring:
   application:
     name: ms-digitalfix-catalog
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/0783cd15-ad70-4f7c-89bd-1c62bc52f411/v2.0
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    table: flyway_schema_history_catalog
+    baseline-on-migrate: true
+    baseline-version: "0"
+    locations: classpath:db/migration
