@@ -2,6 +2,7 @@ package com.digitalfix.ms_digitalfix_workorders.service;
 
 import com.digitalfix.ms_digitalfix_workorders.dto.StatusUpdateRequest;
 import com.digitalfix.ms_digitalfix_workorders.dto.WorkOrderRequest;
+import com.digitalfix.ms_digitalfix_workorders.messaging.WorkOrderEventProducer;
 import com.digitalfix.ms_digitalfix_workorders.model.WorkOrder;
 import com.digitalfix.ms_digitalfix_workorders.model.WorkOrderStatus;
 import com.digitalfix.ms_digitalfix_workorders.repository.WorkOrderRepository;
@@ -14,9 +15,11 @@ import java.util.List;
 public class WorkOrderService {
 
     private final WorkOrderRepository repository;
+    private final WorkOrderEventProducer eventProducer;
 
-    public WorkOrderService(WorkOrderRepository repository) {
+    public WorkOrderService(WorkOrderRepository repository, WorkOrderEventProducer eventProducer) {
         this.repository = repository;
+        this.eventProducer = eventProducer;
     }
 
     public WorkOrder create(WorkOrderRequest request) {
@@ -59,6 +62,10 @@ public class WorkOrderService {
         if (request.getTechnicianName() != null) {
             order.setTechnicianName(request.getTechnicianName());
         }
-        return repository.save(order);
+        WorkOrder saved = repository.save(order);
+
+        // Después de guardar, avisa por RabbitMQ (si falla, no afecta el cambio de estado)
+        eventProducer.publishStatusChange(saved);
+        return saved;
     }
 }

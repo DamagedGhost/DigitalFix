@@ -2,6 +2,7 @@ package com.digitalfix.ms_digitalfix_workorders.service;
 
 import com.digitalfix.ms_digitalfix_workorders.dto.StatusUpdateRequest;
 import com.digitalfix.ms_digitalfix_workorders.dto.WorkOrderRequest;
+import com.digitalfix.ms_digitalfix_workorders.messaging.WorkOrderEventProducer;
 import com.digitalfix.ms_digitalfix_workorders.model.WorkOrder;
 import com.digitalfix.ms_digitalfix_workorders.model.WorkOrderStatus;
 import com.digitalfix.ms_digitalfix_workorders.repository.WorkOrderRepository;
@@ -34,6 +35,9 @@ class WorkOrderServiceTest {
 
     @Mock
     private WorkOrderRepository repository;
+
+    @Mock
+    private WorkOrderEventProducer eventProducer;
 
     @InjectMocks
     private WorkOrderService service;
@@ -126,8 +130,9 @@ class WorkOrderServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ASIGNAR");
 
-        // No debe haber intentado guardar el cambio inv\u00e1lido
+        // No debe haber intentado guardar el cambio inválido ni avisar a RabbitMQ
         verify(repository, never()).save(any(WorkOrder.class));
+        verify(eventProducer, never()).publishStatusChange(any());
     }
 
     @Test
@@ -146,6 +151,7 @@ class WorkOrderServiceTest {
         assertThat(result.getStatus()).isEqualTo(WorkOrderStatus.EN_EJECUCION);
         assertThat(result.getTechnicianName()).isEqualTo("Pedro Soto");
         verify(repository, times(1)).save(existingOrder);
+        verify(eventProducer, times(1)).publishStatusChange(existingOrder);
     }
 
     @Test

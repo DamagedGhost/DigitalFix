@@ -12,5 +12,12 @@ spring:
           audiences:
             - 699ac754-32ba-4fd6-aaf8-bac4850673b8
             - api://699ac754-32ba-4fd6-aaf8-bac4850673b8
+
 workorders:
-  base-url: http://localhost:8081
+  base-url: ${WORKORDERS_BASE_URL:http://localhost:8081}
+
+catalog:
+  base-url: ${CATALOG_BASE_URL:http://localhost:8083}
+
+notify:
+  base-url: ${NOTIFY_BASE_URL:http://localhost:8084}

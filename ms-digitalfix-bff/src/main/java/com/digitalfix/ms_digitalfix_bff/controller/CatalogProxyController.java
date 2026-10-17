@@ -1,5 +1,6 @@
 package com.digitalfix.ms_digitalfix_bff.controller;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,15 +15,15 @@ public class CatalogProxyController {
 
     private final RestClient catalogRestClient;
 
-    public CatalogProxyController(RestClient catalogRestClient) {
+    public CatalogProxyController(@Qualifier("catalogRestClient") RestClient catalogRestClient) {
         this.catalogRestClient = catalogRestClient;
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('Admin')")
+    @PreAuthorize("hasRole('Admin')")
     public ResponseEntity<String> create(@RequestBody String body) {
         return forward(() -> catalogRestClient.post()
-            .uri("/api/catalog/services")
+                .uri("/api/catalog/services")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
@@ -30,28 +31,28 @@ public class CatalogProxyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('Admin')")
+    @PreAuthorize("hasAnyRole('Admin', 'Supervi')")
     public ResponseEntity<String> list() {
         return forward(() -> catalogRestClient.get()
-            .uri("/api/catalog/services")
+                .uri("/api/catalog/services")
                 .retrieve()
                 .toEntity(String.class));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('Admin')")
+    @PreAuthorize("hasAnyRole('Admin', 'Supervi')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
         return forward(() -> catalogRestClient.get()
-            .uri("/api/catalog/services/{id}", id)
+                .uri("/api/catalog/services/{id}", id)
                 .retrieve()
                 .toEntity(String.class));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('Admin')")
+    @PreAuthorize("hasRole('Admin')")
     public ResponseEntity<String> updateTarifaStock(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> catalogRestClient.put()
-            .uri("/api/catalog/services/{id}", id)
+                .uri("/api/catalog/services/{id}", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()

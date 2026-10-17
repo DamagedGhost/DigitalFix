@@ -1,9 +1,12 @@
 package com.digitalfix.ms_digitalfix_bff.controller;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -14,12 +17,12 @@ public class WorkOrderProxyController {
 
     private final RestClient workOrdersRestClient;
 
-    public WorkOrderProxyController(RestClient workOrdersRestClient) {
+    public WorkOrderProxyController(@Qualifier("workOrdersRestClient") RestClient workOrdersRestClient) {
         this.workOrdersRestClient = workOrdersRestClient;
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('Cliente', 'Supervi')")
+    @PreAuthorize("hasAnyRole('Cliente', 'Supervi')")
     public ResponseEntity<String> create(@RequestBody String body) {
         return forward(() -> workOrdersRestClient.post()
                 .uri("/api/workorders")
@@ -30,7 +33,7 @@ public class WorkOrderProxyController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('Cliente', 'Supervi')")
+    @PreAuthorize("hasAnyRole('Admin', 'Supervi', 'Cliente', 'Auditor')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
         return forward(() -> workOrdersRestClient.get()
                 .uri("/api/workorders/{id}", id)
@@ -39,7 +42,7 @@ public class WorkOrderProxyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('Cliente', 'Supervi')")
+    @PreAuthorize("hasAnyRole('Admin', 'Supervi', 'Cliente', 'Auditor')")
     public ResponseEntity<String> list(@RequestParam(required = false) String status) {
         return forward(() -> workOrdersRestClient.get()
                 .uri(uriBuilder -> {
@@ -54,7 +57,7 @@ public class WorkOrderProxyController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('Supervi')")
+    @PreAuthorize("hasRole('Supervi')")
     public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> workOrdersRestClient.put()
                 .uri("/api/workorders/{id}/status", id)
@@ -62,6 +65,15 @@ public class WorkOrderProxyController {
                 .body(body)
                 .retrieve()
                 .toEntity(String.class));
+    }
+
+    @GetMapping("/debug/whoami")
+    public ResponseEntity<String> whoami() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return ResponseEntity.ok(
+                "Principal: " + auth.getName() + "\n" +
+                "Authorities: " + auth.getAuthorities()
+        );
     }
 
     private ResponseEntity<String> forward(java.util.function.Supplier<ResponseEntity<String>> call) {
