@@ -1,3 +1,47 @@
+server:
+  port: 8084
+
 spring:
   application:
     name: ms-digitalfix-notify
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER:digitalfix}
+    password: ${RABBIT_PASS:digitalfix}
+    listener:
+      simple:
+        acknowledge-mode: manual        # el ACK lo hacemos nosotros en el código
+        default-requeue-rejected: false # un mensaje rechazado no vuelve a la cola, se va a la DLQ
+        prefetch: 1                     # lee de a un mensaje a la vez
+
+# Nombres de la topología RabbitMQ. Todo se lee de acá, no hay nombres sueltos en el código.
+digitalfix:
+  rabbit:
+    exchanges:
+      direct: cmd.direct
+      topic: cmd.topic
+      dead: cmd.dead.dlx
+    queues:
+      email:
+        name: q.cmd.email
+        dlq: q.cmd.email.dlq
+        direct-key: email.send
+        topic-key: "email.*"
+        dlq-key: email.dlq
+      dispatch:
+        name: q.cmd.dispatch
+        dlq: q.cmd.dispatch.dlq
+        direct-key: dispatch.ticket
+        topic-key: "dispatch.#"
+        dlq-key: dispatch.dlq
+      report:
+        name: q.cmd.report
+        dlq: q.cmd.report.dlq
+        direct-key: report.gen
+        topic-key: "report.*"
+        dlq-key: report.dlq
+  consumer:
+    retry:
+      max-attempts: 3   # cuántas veces se intenta un error temporal
+      backoff-ms: 2000  # espera entre intentos
