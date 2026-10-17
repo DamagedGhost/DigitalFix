@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: digitalfix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: digitalfix
+      POSTGRES_USER: digitalfix
+      POSTGRES_PASSWORD: digitalfix
+    ports:
+      - "5432:5432"
+    volumes:
+      - digitalfix_pgdata:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: digitalfix-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: digitalfix
+      RABBITMQ_DEFAULT_PASS: digitalfix
+    ports:
+      - "5672:5672"     # puerto que usan los microservicios
+      - "15672:15672"   # panel web
+    volumes:
+      - digitalfix_rabbitdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  digitalfix_pgdata:
+  digitalfix_rabbitdata:
