@@ -31,12 +31,15 @@ public class ConsumerAckSupport {
     private static final Logger log = LoggerFactory.getLogger(ConsumerAckSupport.class);
 
     private final ConsumerRetryProperties retry;
+    private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
 
     // eventIds ya procesados (en memoria, alcanza para esta evaluación)
     private final Set<String> procesados = ConcurrentHashMap.newKeySet();
 
-    public ConsumerAckSupport(ConsumerRetryProperties retry) {
+    public ConsumerAckSupport(ConsumerRetryProperties retry,
+                              com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
         this.retry = retry;
+        this.historyService = historyService;
     }
 
     public void procesar(String flujo, EventEnvelope envelope, Channel channel,
@@ -45,6 +48,7 @@ public class ConsumerAckSupport {
         // Sobre vacío o sin id: no se puede procesar ni deduplicar
         if (envelope == null || envelope.eventId() == null) {
             log.error("[DLQ][{}] Mensaje inválido (sin sobre o sin eventId): {}", flujo, envelope);
+            historyService.registrar("[DLQ][" + flujo + "] Mensaje inválido sin ID", "SYSTEM");
             channel.basicNack(deliveryTag, false, false);
             return;
         }
@@ -66,18 +70,21 @@ public class ConsumerAckSupport {
             // 4. Error sin arreglo
             log.error("[DLQ][{}] Error sin arreglo, se envía a la DLQ. Motivo: {} | Mensaje: {}",
                     flujo, e.getMessage(), envelope);
+            historyService.registrar("[DLQ][" + flujo + "] " + e.getMessage(), "SYSTEM");
             channel.basicNack(deliveryTag, false, false);
 
         } catch (RecoverableMessageException e) {
             // 3. Se acabaron los reintentos
             log.error("[DLQ][{}] Se agotaron los {} intentos, se envía a la DLQ. Motivo: {} | Mensaje: {}",
                     flujo, retry.maxAttempts(), e.getMessage(), envelope);
+            historyService.registrar("[DLQ][" + flujo + "] Reintentos agotados: " + e.getMessage(), "SYSTEM");
             channel.basicNack(deliveryTag, false, false);
 
         } catch (Exception e) {
             // 4. Error inesperado: no se reintenta para no quedar en un ciclo infinito
             log.error("[DLQ][{}] Error inesperado, se envía a la DLQ. Motivo: {} | Mensaje: {}",
                     flujo, e.getMessage(), envelope, e);
+            historyService.registrar("[DLQ][" + flujo + "] Error inesperado: " + e.getMessage(), "SYSTEM");
             channel.basicNack(deliveryTag, false, false);
         }
     }

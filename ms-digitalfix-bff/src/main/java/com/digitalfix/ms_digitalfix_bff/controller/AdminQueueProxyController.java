@@ -26,7 +26,7 @@ import java.util.function.Supplier;
  */
 @RestController
 @RequestMapping({"/api/admin/queues", "/api/v1/admin/queues"})
-@PreAuthorize("hasAuthority('Admin')")
+@PreAuthorize("hasAnyRole('Admin', 'Administrador') or hasAnyAuthority('Admin', 'ROLE_Admin', 'Administrador', 'ROLE_Administrador')")
 public class AdminQueueProxyController {
 
     private final RestClient notifyRestClient;

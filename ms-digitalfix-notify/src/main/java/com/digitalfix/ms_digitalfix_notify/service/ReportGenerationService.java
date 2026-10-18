@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 public class ReportGenerationService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportGenerationService.class);
+    private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
+
+    public ReportGenerationService(com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
+        this.historyService = historyService;
+    }
 
     public void generarInforme(EventEnvelope envelope) {
         WorkOrderEventPayload p = envelope.payload();
@@ -24,5 +29,9 @@ public class ReportGenerationService {
 
         log.info("[REPORTE] PDF generado para la orden {} (cliente '{}', técnico '{}')",
                 p.orderId(), p.clientName(), p.technicianName());
+        historyService.registrar(
+                "Informe de cierre y métricas generado para la orden #" + p.orderId() + " (Cliente: " + p.clientName() + ")",
+                "REPORT"
+        );
     }
 }

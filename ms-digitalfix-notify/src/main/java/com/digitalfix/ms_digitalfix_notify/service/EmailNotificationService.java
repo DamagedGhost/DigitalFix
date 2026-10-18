@@ -15,6 +15,11 @@ import org.springframework.stereotype.Service;
 public class EmailNotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailNotificationService.class);
+    private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
+
+    public EmailNotificationService(com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
+        this.historyService = historyService;
+    }
 
     public void enviarEmail(EventEnvelope envelope) {
         WorkOrderEventPayload p = envelope.payload();
@@ -31,5 +36,9 @@ public class EmailNotificationService {
 
         log.info("[EMAIL] Aviso enviado al cliente '{}' por la orden {} (estado {})",
                 p.clientName(), p.orderId(), p.status());
+        historyService.registrar(
+                "Aviso de email enviado a '" + p.clientName() + "' por la orden #" + p.orderId() + " (estado " + p.status() + ")",
+                "EMAIL"
+        );
     }
 }

@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 public class DispatchTicketService {
 
     private static final Logger log = LoggerFactory.getLogger(DispatchTicketService.class);
+    private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
+
+    public DispatchTicketService(com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
+        this.historyService = historyService;
+    }
 
     public void generarTicket(EventEnvelope envelope) {
         WorkOrderEventPayload p = envelope.payload();
@@ -29,5 +34,9 @@ public class DispatchTicketService {
 
         log.info("[DESPACHO] Ticket generado para el técnico '{}' por la orden {} (cliente '{}')",
                 p.technicianName(), p.orderId(), p.clientName());
+        historyService.registrar(
+                "Ticket de despacho asignado al técnico '" + p.technicianName() + "' por la orden #" + p.orderId(),
+                "DISPATCH"
+        );
     }
 }

@@ -46,8 +46,8 @@ export default function AdminRabbitPanel() {
             const response = await fetchWithToken("/api/v1/admin/queues", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // Tu DTO CreateQueueRequest usualmente espera queueName
-                body: JSON.stringify({ queueName }), 
+                // CreateQueueRequest espera { name, exchange?, routingKey? }
+                body: JSON.stringify({ name: queueName, queueName }), 
             });
             if (!response.ok) throw new Error(`Error: ${response.status}`);
             showMessage(`Cola '${queueName}' creada exitosamente.`, "success");
