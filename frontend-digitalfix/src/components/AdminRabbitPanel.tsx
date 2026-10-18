@@ -3,6 +3,8 @@ import { useApi } from "../useApi";
 
 type QueueInfo = {
     name: string;
+    flow?: string;
+    type?: string;
     messages?: number;
     consumers?: number;
 };
@@ -25,9 +27,19 @@ export default function AdminRabbitPanel() {
             const response = await fetchWithToken("/api/v1/admin/queues");
             if (response.ok) {
                 const data = await response.json();
-                // Si el backend devuelve strings, los mapeamos. Si devuelve objetos, los usamos directo.
-                const formattedQueues = data.map((q: any) => typeof q === 'string' ? { name: q } : q);
-                setQueues(formattedQueues);
+                if (Array.isArray(data)) {
+                    const formattedQueues: QueueInfo[] = data.map((q: any) => {
+                        const rawName = typeof q === 'string' ? q : (q.queue || q.name || '');
+                        return {
+                            name: rawName,
+                            flow: q.flow,
+                            type: q.type,
+                            messages: q.messages ?? 0,
+                            consumers: q.consumers ?? 0,
+                        };
+                    });
+                    setQueues(formattedQueues);
+                }
             }
         } catch (error) {
             console.error("Error al cargar colas", error);
@@ -98,8 +110,8 @@ export default function AdminRabbitPanel() {
     };
 
     // Función auxiliar para extraer el flujo base del nombre de la cola (ej: q.cmd.email -> email)
-    const extractFlowName = (queueName: string) => {
-        return queueName.replace('q.cmd.', '').replace('.dlq', '');
+    const extractFlowName = (queueName: string = "") => {
+        return (queueName || "").replace("q.cmd.", "").replace(".dlq", "");
     };
 
     return (
@@ -140,14 +152,26 @@ export default function AdminRabbitPanel() {
                             ) : (
                                 <ul className="divide-y divide-gray-200 text-sm">
                                     {queues.map((q, idx) => {
-                                        const isDlq = q.name.includes('.dlq');
-                                        const flowName = extractFlowName(q.name);
+                                        const qName = q.name || "";
+                                        const isDlq = q.type === "dlq" || qName.includes(".dlq");
+                                        const flowName = q.flow || extractFlowName(qName);
 
                                         return (
                                             <li key={idx} className="p-4 flex flex-col md:flex-row md:justify-between md:items-center hover:bg-gray-50 gap-4">
                                                 <div>
-                                                    <span className="font-mono font-bold text-[#00274C] text-base">{q.name}</span>
-                                                    {isDlq && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded font-bold">Dead Letter Queue</span>}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono font-bold text-[#00274C] text-base">{qName}</span>
+                                                        {isDlq ? (
+                                                            <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded font-bold">Dead Letter Queue</span>
+                                                        ) : (
+                                                            <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded font-bold">Principal</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mt-1 flex gap-3">
+                                                        <span>Mensajes: <b>{q.messages ?? 0}</b></span>
+                                                        <span>Consumidores: <b>{q.consumers ?? 0}</b></span>
+                                                        {q.flow && <span>Flujo: <b>{q.flow}</b></span>}
+                                                    </div>
                                                 </div>
                                                 
                                                 <div className="flex flex-wrap gap-2">
@@ -159,9 +183,11 @@ export default function AdminRabbitPanel() {
                                                             Reprocesar DLQ
                                                         </button>
                                                     )}
-                                                    <button onClick={() => handleDeleteQueue(q.name)} disabled={isLoading} className="px-3 py-1 bg-red-100 text-red-800 hover:bg-red-200 rounded font-bold text-xs transition">
-                                                        Eliminar
-                                                    </button>
+                                                    {!isDlq && (
+                                                        <button onClick={() => handleDeleteQueue(qName)} disabled={isLoading} className="px-3 py-1 bg-red-100 text-red-800 hover:bg-red-200 rounded font-bold text-xs transition">
+                                                            Eliminar
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </li>
                                         );
