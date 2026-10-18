@@ -41,7 +41,7 @@ class ConsumerAckSupportTest {
     @BeforeEach
     void setUp() {
         // 3 intentos y 1 ms de espera para que el test sea rápido
-        support = new ConsumerAckSupport(new ConsumerRetryProperties(3, 1));
+        support = new ConsumerAckSupport(new ConsumerRetryProperties(3, 1), new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService());
         envelope = new EventEnvelope("WORKORDER_ASIGNADA", "evento-1", "2026-01-01T00:00:00Z",
                 "trace-1", "workorder-1",
                 new WorkOrderEventPayload(1L, "Maria Perez", "Pedro", "ASIGNADA"));

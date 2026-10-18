@@ -17,12 +17,8 @@ public class EmailNotificationService {
     private static final Logger log = LoggerFactory.getLogger(EmailNotificationService.class);
     private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
 
-    public EmailNotificationService() {
-        this(new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService());
-    }
-
     public EmailNotificationService(com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
-        this.historyService = historyService != null ? historyService : new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService();
+        this.historyService = historyService;
     }
 
     public void enviarEmail(EventEnvelope envelope) {
