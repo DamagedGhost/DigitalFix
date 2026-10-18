@@ -104,9 +104,32 @@ export default function AdminRabbitPanel() {
             const response = await fetchWithToken(`/api/v1/admin/queues/${flow}/reprocess?max=100`, { method: "POST" });
             if (!response.ok) throw new Error(`Error: ${response.status}`);
             showMessage(`Mensajes de la DLQ reprocesados para el flujo: ${flow}`, "success");
+            await loadQueues();
         } catch (error) {
             showMessage("Error al reprocesar la DLQ", "error");
         } finally { setIsLoading(false); }
+    };
+
+    // 6. POST /api/v1/admin/queues/simulate-dlq -> Provoca un fallo controlado para demo en vivo
+    const handleSimulateDlq = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetchWithToken("/api/v1/admin/queues/simulate-dlq", {
+                method: "POST"
+            });
+            if (!response.ok) throw new Error(`Error: ${response.status}`);
+            const data = await response.json();
+            showMessage(data.message || "Fallo simulado: Mensaje desviado a q.cmd.dispatch.dlq", "success");
+            // Esperar breve tiempo para que el consumidor termine el nack y RabbitMQ mueva a DLQ
+            setTimeout(async () => {
+                await loadQueues();
+                window.dispatchEvent(new Event('refresh-notifications'));
+            }, 600);
+        } catch (error) {
+            showMessage("Error al provocar fallo en la cola", "error");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // Función auxiliar para extraer el flujo base del nombre de la cola (ej: q.cmd.email -> email)
@@ -130,6 +153,27 @@ export default function AdminRabbitPanel() {
                 )}
 
                 <div className="space-y-6">
+                    {/* Tarjeta de Demostración en Vivo de Fallos y DLQ */}
+                    <div className="bg-amber-50 border border-amber-300 rounded p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl">⚡</span>
+                                <h4 className="font-bold text-amber-900 text-base">Demostración en Vivo: Manejo de Dead Letter Queue (DLQ)</h4>
+                            </div>
+                            <p className="text-xs text-amber-800">
+                                Inyecta un mensaje intencionalmente defectuoso (orden sin técnico) a la cola principal <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">q.cmd.dispatch</code>.
+                                El microservicio detectará la excepción irrecuperable, ejecutará <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">basicNack(requeue=false)</code> y RabbitMQ moverá automáticamente el mensaje a la cola <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">q.cmd.dispatch.dlq</code> sin pérdida de datos.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleSimulateDlq}
+                            disabled={isLoading}
+                            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-sm shadow transition flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50 cursor-pointer"
+                        >
+                            <span>⚠️</span> Provocar Fallo y Desvío a DLQ
+                        </button>
+                    </div>
+
                     <form onSubmit={handleCreateQueue} className="flex gap-4 items-end bg-gray-50 p-4 rounded border border-gray-200">
                         <div className="flex-1">
                             <label className="block text-sm font-bold text-gray-700 mb-1">Aprovisionar Nueva Cola</label>

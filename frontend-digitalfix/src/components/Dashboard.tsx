@@ -43,9 +43,15 @@ export default function Dashboard() {
     useEffect(() => {
         void loadNotifications();
         
+        const handleRefresh = () => void loadNotifications();
+        window.addEventListener('refresh-notifications', handleRefresh);
+
         // Polling ligero para simular real-time si no hay WebSockets configurados
         const interval = setInterval(() => void loadNotifications(), 15000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('refresh-notifications', handleRefresh);
+        };
     }, [fetchWithToken]);
 
     const getIcon = (type: string) => {

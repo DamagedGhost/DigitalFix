@@ -16,10 +16,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
+import com.digitalfix.ms_digitalfix_notify.event.EventEnvelope;
+import com.digitalfix.ms_digitalfix_notify.event.WorkOrderEventPayload;
 
 /**
  * Administración de las colas: consultar, crear, borrar, purgar y reprocesar la DLQ.
@@ -159,6 +164,42 @@ public class AdminQueueService {
         log.info("[ADMIN] Reproceso de '{}': {} mensajes enviados de vuelta a '{}'",
                 def.dlq(), movidos, def.name());
         return movidos;
+    }
+
+    /**
+     * Simula un fallo inyectando un mensaje inválido a la cola 'q.cmd.dispatch'.
+     * Al no tener técnico asignado, DispatchTicketService lanzará UnrecoverableMessageException
+     * y ConsumerAckSupport ejecutará basicNack(requeue=false), enviándolo directamente a 'q.cmd.dispatch.dlq'.
+     */
+    public Map<String, Object> simularFalloDlq() {
+        String eventId = UUID.randomUUID().toString();
+        long orderId = 9999L;
+        EventEnvelope faultyEnvelope = new EventEnvelope(
+                "WORKORDER_ASIGNADA",
+                eventId,
+                Instant.now().toString(),
+                UUID.randomUUID().toString(),
+                "sim-dlq-" + orderId,
+                new WorkOrderEventPayload(orderId, "Cliente Demostración DLQ", null, "ASIGNADA")
+        );
+
+        rabbitTemplate.convertAndSend(
+                props.exchanges().direct(),
+                props.queues().dispatch().directKey(),
+                faultyEnvelope
+        );
+
+        log.warn("[ADMIN][SIMULACION] Evento defectuoso publicado a exchange '{}' con routingKey '{}'. " +
+                 "Orden sin técnico -> provocará desvío automático a DLQ ('{}')",
+                props.exchanges().direct(), props.queues().dispatch().directKey(), props.queues().dispatch().dlq());
+
+        return Map.of(
+                "status", "simulated",
+                "message", "Mensaje defectuoso inyectado a " + props.queues().dispatch().name() + ". Se desvía automáticamente a " + props.queues().dispatch().dlq(),
+                "eventId", eventId,
+                "targetQueue", props.queues().dispatch().name(),
+                "expectedDlq", props.queues().dispatch().dlq()
+        );
     }
 
     // ---------- Helpers ----------

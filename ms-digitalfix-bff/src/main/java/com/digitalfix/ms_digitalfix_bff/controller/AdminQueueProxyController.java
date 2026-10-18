@@ -99,6 +99,15 @@ public class AdminQueueProxyController {
                 .toEntity(String.class));
     }
 
+    // Provocar fallo intencional para demostrar en vivo el desvío a DLQ
+    @PostMapping("/simulate-dlq")
+    public ResponseEntity<String> simulateDlq() {
+        return forward(() -> notifyRestClient.post()
+                .uri("/api/admin/queues/simulate-dlq")
+                .retrieve()
+                .toEntity(String.class));
+    }
+
     // Si notify no responde, devuelve 503 con cuerpo JSON en vez de reventar
     private ResponseEntity<String> forward(Supplier<ResponseEntity<String>> call) {
         try {

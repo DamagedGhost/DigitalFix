@@ -68,4 +68,10 @@ public class AdminQueueController {
         int movidos = service.reprocesar(flow, max);
         return Map.of("flow", flow, "reprocessed", movidos);
     }
+
+    // Provocar fallo intencional para demostrar en vivo el desvío a DLQ
+    @PostMapping("/simulate-dlq")
+    public Map<String, Object> simularFalloDlq() {
+        return service.simularFalloDlq();
+    }
 }
