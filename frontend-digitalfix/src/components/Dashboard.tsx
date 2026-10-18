@@ -66,14 +66,22 @@ export default function Dashboard() {
 
     useEffect(() => {
         void loadDashboardData();
+        const handleRefresh = () => void loadDashboardData();
+        window.addEventListener('refresh-notifications', handleRefresh);
+
         const interval = setInterval(() => void loadDashboardData(), 15000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('refresh-notifications', handleRefresh);
+        };
     }, [fetchWithToken]);
 
     const getIcon = (type: string) => {
-        switch(type) {
+        switch(type?.toUpperCase()) {
             case "EMAIL": return "📧";
+            case "REPORT":
             case "REPORTE": return "📊";
+            case "DISPATCH":
             case "DESPACHO": return "🚚";
             default: return "🔔";
         }
