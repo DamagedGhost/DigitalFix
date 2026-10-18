@@ -103,15 +103,40 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: digitalfix-rabbitmq
+    hostname: rabbitmq
     restart: always
     environment:
       - RABBITMQ_DEFAULT_USER=digitalfix
       - RABBITMQ_DEFAULT_PASS=digitalfix
+      - RABBITMQ_ERLANG_COOKIE=DIGITALFIX_CLUSTER_COOKIE_2026
     ports:
       - "5672:5672"     # AMQP para microservicios
-      - "15672:15672"   # Panel Web de Gestión
+      - "15672:15672"   # Panel Web de Gestión (Nodo 1)
     volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq2:
+    image: rabbitmq:3-management
+    container_name: digitalfix-rabbitmq2
+    hostname: rabbitmq2
+    restart: always
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=DIGITALFIX_CLUSTER_COOKIE_2026
+    ports:
+      - "5673:5672"     # AMQP alternativo (Nodo 2)
+      - "15673:15672"   # Panel Web de Gestión alternativo (Nodo 2)
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -121,3 +146,5 @@ services:
 volumes:
   pgdata:
   rabbitmq_data:
+  rabbitmq2_data:
+
