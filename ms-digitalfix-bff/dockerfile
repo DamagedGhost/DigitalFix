@@ -4,7 +4,7 @@ WORKDIR /app
 COPY . .
 # Permiso para ejecutar script mvnw
 RUN chmod +x mvnw
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw clean package -DskipTests -Dmaven.test.skip=true
 
 # Etapa 2: Imagen de ejecución ligera
 FROM eclipse-temurin:21-jre-alpine

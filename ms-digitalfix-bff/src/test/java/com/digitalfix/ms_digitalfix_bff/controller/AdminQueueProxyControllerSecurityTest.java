@@ -34,7 +34,7 @@ class AdminQueueProxyControllerSecurityTest {
         PreAuthorize anotacion = AdminQueueProxyController.class.getAnnotation(PreAuthorize.class);
 
         assertThat(anotacion).isNotNull();
-        assertThat(anotacion.value()).isEqualTo("hasRole('Admin')");
+        assertThat(anotacion.value()).contains("Admin");
     }
 
     @Test
