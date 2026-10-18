@@ -16,6 +16,6 @@ public class RabbitConsumerConfig {
 
     @Bean
     public MessageConverter messageConverter() {
-        return new JacksonJsonMessageConverter();
+        return new JacksonJsonMessageConverter("*");
     }
 }

@@ -4,6 +4,7 @@ import com.digitalfix.ms_digitalfix_notify.consumer.support.ConsumerAckSupport;
 import com.digitalfix.ms_digitalfix_notify.event.EventEnvelope;
 import com.digitalfix.ms_digitalfix_notify.service.DispatchTicketService;
 import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -27,8 +28,8 @@ public class DispatchConsumer {
     }
 
     @RabbitListener(queues = "${digitalfix.rabbit.queues.dispatch.name}")
-    public void recibir(EventEnvelope envelope, Channel channel,
+    public void recibir(Message message, Channel channel,
                         @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
-        ackSupport.procesar("dispatch", envelope, channel, deliveryTag, dispatchService::generarTicket);
+        ackSupport.procesarMensaje("dispatch", message, channel, deliveryTag, dispatchService::generarTicket);
     }
 }

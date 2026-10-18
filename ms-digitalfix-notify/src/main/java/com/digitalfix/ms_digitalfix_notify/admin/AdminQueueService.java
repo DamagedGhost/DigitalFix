@@ -152,6 +152,15 @@ public class AdminQueueService {
                 break; // la DLQ quedó vacía
             }
             try {
+                if (message.getMessageProperties() != null) {
+                    message.getMessageProperties().getHeaders().remove("x-death");
+                    message.getMessageProperties().getHeaders().remove("x-first-death-exchange");
+                    message.getMessageProperties().getHeaders().remove("x-first-death-reason");
+                    message.getMessageProperties().getHeaders().remove("x-first-death-queue");
+                    message.getMessageProperties().getHeaders().remove("x-last-death-exchange");
+                    message.getMessageProperties().getHeaders().remove("x-last-death-reason");
+                    message.getMessageProperties().getHeaders().remove("x-last-death-queue");
+                }
                 rabbitTemplate.send(props.exchanges().direct(), def.directKey(), message);
                 movidos++;
             } catch (Exception e) {
