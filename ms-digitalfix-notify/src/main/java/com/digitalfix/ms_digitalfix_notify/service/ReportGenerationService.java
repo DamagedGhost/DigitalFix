@@ -16,8 +16,12 @@ public class ReportGenerationService {
     private static final Logger log = LoggerFactory.getLogger(ReportGenerationService.class);
     private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
 
+    public ReportGenerationService() {
+        this(new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService());
+    }
+
     public ReportGenerationService(com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
-        this.historyService = historyService;
+        this.historyService = historyService != null ? historyService : new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService();
     }
 
     public void generarInforme(EventEnvelope envelope) {

@@ -36,10 +36,14 @@ public class ConsumerAckSupport {
     // eventIds ya procesados (en memoria, alcanza para esta evaluación)
     private final Set<String> procesados = ConcurrentHashMap.newKeySet();
 
+    public ConsumerAckSupport(ConsumerRetryProperties retry) {
+        this(retry, new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService());
+    }
+
     public ConsumerAckSupport(ConsumerRetryProperties retry,
                               com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
         this.retry = retry;
-        this.historyService = historyService;
+        this.historyService = historyService != null ? historyService : new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService();
     }
 
     public void procesar(String flujo, EventEnvelope envelope, Channel channel,
