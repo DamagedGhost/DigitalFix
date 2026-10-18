@@ -27,17 +27,23 @@ export function useApi() {
         const headers = new Headers(options.headers);
         headers.set("Authorization", `Bearer ${response.accessToken}`);
 
-        // URL base: VITE_BFF_URL en desarrollo directo o relativo para Nginx
         const configuredBaseUrl = (import.meta.env.VITE_BFF_URL || "").replace(/\/$/, "");
         let path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
         if (!configuredBaseUrl && !path.startsWith("/api")) {
             path = `/api${path}`;
         }
         
-        return fetch(`${configuredBaseUrl}${path}`, {
+        const fetchResponse = await fetch(`${configuredBaseUrl}${path}`, {
             ...options,
             headers,
         });
+
+        // Manejo centralizado de errores 403 y 401
+        if (fetchResponse.status === 401 || fetchResponse.status === 403) {
+            throw new Error("Tu rol no tiene permiso para esta acción");
+        }
+
+        return fetchResponse;
     }, [accounts, instance]);
 
     return { fetchWithToken };

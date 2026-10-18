@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useApi } from "../useApi";
-
-// Cambio mayor: Reemplazo de funciones estaticas con datos simulados
-// por llamadas API real usando useApi y fetchWithToken
-// Interaccion con backend real
+import { useMsal } from "@azure/msal-react";
 
 type WorkOrderStatus = "CREADA" | "ASIGNADA" | "EN_DESPLAZAMIENTO" | "EN_EJECUCION" | "CERRADA" | "CANCELADA";
 
@@ -28,6 +25,17 @@ const statuses: WorkOrderStatus[] = [
 
 export default function Ordenes() {
     const { fetchWithToken } = useApi();
+    const { accounts } = useMsal();
+    
+    // Extracción de roles
+    const userRoles = (accounts[0]?.idTokenClaims?.roles as string[]) || [];
+    const isSupervisor = userRoles.some(r => r.toLowerCase().startsWith("superv") || r.toLowerCase() === "operador");
+    const isCliente = userRoles.includes("Cliente");
+
+    // Reglas de negocio granulares
+    const canCreateOrders = isCliente || isSupervisor;
+    const canManageState = isSupervisor;
+
     const [ordenes, setOrdenes] = useState<WorkOrder[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
@@ -38,7 +46,6 @@ export default function Ordenes() {
     const [technicianName, setTechnicianName] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const loadOrders = async () => {
@@ -57,7 +64,7 @@ export default function Ordenes() {
 
     useEffect(() => {
         void loadOrders();
-    }, []);
+    }, [fetchWithToken]);
 
     const createOrder = async (event: FormEvent) => {
         event.preventDefault();
@@ -131,6 +138,9 @@ export default function Ordenes() {
             || order.id.toString().includes(search);
     });
 
+    const isTechnicianRequired = selectedStatus !== "CREADA" && selectedStatus !== "CANCELADA";
+    const isFormValid = !isTechnicianRequired || technicianName.trim() !== "";
+
     return (
         <div className="space-y-6">
             <header className="flex justify-between items-end border-b border-gray-300 pb-4">
@@ -138,12 +148,16 @@ export default function Ordenes() {
                     <h2 className="text-3xl font-bold text-[#00274C]">Órdenes de Trabajo</h2>
                     <p className="text-gray-600 mt-1">Gestión y seguimiento de mantenciones en terreno</p>
                 </div>
-                <button 
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-[#00274C] text-white font-bold px-5 py-2 rounded shadow hover:bg-blue-900 transition flex items-center gap-2"
-                >
-                    <span className="text-[#FDB913] text-xl leading-none">+</span> Nueva Orden
-                </button>
+                
+                {/* Control RBAC: Solo visible para Cliente y Supervisor */}
+                {canCreateOrders && (
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-[#00274C] text-white font-bold px-5 py-2 rounded shadow hover:bg-blue-900 transition flex items-center gap-2"
+                    >
+                        <span className="text-[#FDB913] text-xl leading-none">+</span> Nueva Orden
+                    </button>
+                )}
             </header>
 
             {error && <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
@@ -168,14 +182,15 @@ export default function Ordenes() {
                                 <th className="p-4 font-semibold">Cliente</th>
                                 <th className="p-4 font-semibold">Servicio</th>
                                 <th className="p-4 font-semibold">Estado</th>
-                                <th className="p-4 font-semibold text-center">Acción</th>
+                                {/* Condicionamos la cabecera para mantener la estructura de la tabla */}
+                                {canManageState && <th className="p-4 font-semibold text-center">Acción</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 text-gray-800 text-sm">
                             {isLoading ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Cargando órdenes...</td></tr>
+                                <tr><td colSpan={canManageState ? 6 : 5} className="p-8 text-center text-gray-500">Cargando órdenes...</td></tr>
                             ) : filteredOrders.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-gray-500">No hay órdenes registradas.</td></tr>
+                                <tr><td colSpan={canManageState ? 6 : 5} className="p-8 text-center text-gray-500">No hay órdenes registradas.</td></tr>
                             ) : filteredOrders.map((orden) => (
                                 <tr key={orden.id} className="hover:bg-gray-50 transition duration-150">
                                     <td className="p-4 font-bold text-[#00274C]">#{orden.id}</td>
@@ -187,11 +202,15 @@ export default function Ordenes() {
                                             {orden.status.replace("_", " ")}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-center">
-                                        <button onClick={() => openOrder(orden)} className="text-[#00274C] hover:text-[#FDB913] font-bold text-xs uppercase tracking-wider transition">
-                                            Gestionar
-                                        </button>
-                                    </td>
+                                    
+                                    {/* Control RBAC: Solo visible para Supervisor */}
+                                    {canManageState && (
+                                        <td className="p-4 text-center">
+                                            <button onClick={() => openOrder(orden)} className="text-[#00274C] hover:text-[#FDB913] font-bold text-xs uppercase tracking-wider transition">
+                                                Gestionar
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -199,47 +218,36 @@ export default function Ordenes() {
                 </div>
             </div>
 
-            {isModalOpen && (
+            {isModalOpen && canCreateOrders && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded shadow-xl w-full max-w-lg overflow-hidden border-t-4 border-[#FDB913]">
                         <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-[#00274C]">Crear Nueva Orden</h3>
-                            <button 
-                                onClick={() => setIsModalOpen(false)}
-                                className="text-gray-400 hover:text-red-500 font-bold text-xl transition"
-                            >
-                                ×
-                            </button>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-red-500 font-bold text-xl transition">×</button>
                         </div>
                         
                         <form onSubmit={createOrder} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Cliente / Inmueble</label>
-                                <input required value={clientName} onChange={(event) => setClientName(event.target.value)} type="text" className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#00274C]" placeholder="Ej. Edificio Las Palmas" />
+                                <input required value={clientName} onChange={(e) => setClientName(e.target.value)} type="text" className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#00274C]" placeholder="Ej. Edificio Las Palmas" />
                             </div>
-                            
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Descripción del Problema</label>
-                                <textarea required value={description} onChange={(event) => setDescription(event.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#00274C]" rows={3} placeholder="Detalle los síntomas o requerimientos..."></textarea>
+                                <textarea required value={description} onChange={(e) => setDescription(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-[#00274C]" rows={3} placeholder="Detalle los síntomas o requerimientos..."></textarea>
                             </div>
 
                             <div className="p-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 -mx-6 -mb-6">
-                            <button 
-                                onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 border border-gray-300 text-gray-700 rounded font-bold hover:bg-gray-100 transition"
-                            >
-                                Cancelar
-                            </button>
-                            <button disabled={isSaving} type="submit" className="px-4 py-2 bg-[#00274C] text-white rounded font-bold hover:bg-blue-900 shadow transition disabled:opacity-50">
-                                {isSaving ? "Guardando..." : "Guardar Orden"}
-                            </button>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded font-bold hover:bg-gray-100 transition">Cancelar</button>
+                                <button disabled={isSaving} type="submit" className="px-4 py-2 bg-[#00274C] text-white rounded font-bold hover:bg-blue-900 shadow transition disabled:opacity-50">
+                                    {isSaving ? "Guardando..." : "Guardar Orden"}
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {selectedOrder && (
+            {selectedOrder && canManageState && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <form onSubmit={updateOrder} className="bg-white rounded shadow-xl w-full max-w-lg overflow-hidden border-t-4 border-[#FDB913]">
                         <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
@@ -250,18 +258,20 @@ export default function Ordenes() {
                             <p className="text-sm text-gray-600">{selectedOrder.clientName}: {selectedOrder.description}</p>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Estado</label>
-                                <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value as WorkOrderStatus)} className="w-full border border-gray-300 rounded px-3 py-2 bg-white">
+                                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as WorkOrderStatus)} className="w-full border border-gray-300 rounded px-3 py-2 bg-white">
                                     {statuses.map((status) => <option key={status} value={status}>{status.replace("_", " ")}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Técnico</label>
-                                <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" placeholder="Nombre del técnico" />
+                                <input value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" placeholder="Nombre del técnico" />
                             </div>
                         </div>
                         <div className="p-5 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
                             <button type="button" onClick={() => setSelectedOrder(null)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded font-bold hover:bg-gray-100 transition">Cancelar</button>
-                            <button disabled={isSaving} type="submit" className="px-4 py-2 bg-[#00274C] text-white rounded font-bold hover:bg-blue-900 shadow transition disabled:opacity-50">{isSaving ? "Guardando..." : "Guardar cambios"}</button>
+                            <button disabled={isSaving ||  !isFormValid} type="submit" className="px-4 py-2 bg-[#00274C] text-white rounded font-bold hover:bg-blue-900 shadow transition disabled:opacity-50">
+                                {isSaving ? "Guardando..." : "Guardar cambios"}
+                            </button>
                         </div>
                     </form>
                 </div>

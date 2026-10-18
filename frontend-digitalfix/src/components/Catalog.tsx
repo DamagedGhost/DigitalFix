@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useApi } from "../useApi";
+import { useMsal } from "@azure/msal-react";
 
-// Ajusta estas propiedades para que coincidan exactamente con la entidad Java de tu compañero
 type CatalogItem = {
     id: number;
     name: string;
@@ -13,6 +13,12 @@ type CatalogItem = {
 
 export default function Catalog() {
     const { fetchWithToken } = useApi();
+    const { accounts } = useMsal();
+    
+    // Control de acceso RBAC
+    const userRoles = (accounts[0]?.idTokenClaims?.roles as string[]) || [];
+    const isAdmin = userRoles.includes("Admin");
+
     const [items, setItems] = useState<CatalogItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
@@ -29,12 +35,8 @@ export default function Catalog() {
         setIsLoading(true);
         setError("");
         try {
-
             const response = await fetchWithToken("/api/v1/catalog");
-            if (!response.ok) {
-                if (response.status === 403) throw new Error("No tienes permisos para ver el catálogo.");
-                throw new Error(`Error al cargar el catálogo (${response.status})`);
-            }
+            // Nota: Ya no lanzamos el error manualmente aquí porque useApi lo intercepta
             const data = await response.json();
             setItems(data);
         } catch (err) {
@@ -53,7 +55,7 @@ export default function Catalog() {
         setIsSaving(true);
         setError("");
         try {
-            const response = await fetchWithToken("/api/v1/catalog", {
+            await fetchWithToken("/api/v1/catalog", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
@@ -63,8 +65,6 @@ export default function Catalog() {
                     stock: Number(stock) 
                 }),
             });
-            
-            if (!response.ok) throw new Error(`Error al crear el ítem (${response.status})`);
             
             // Limpiar formulario y recargar
             setName("");
@@ -87,13 +87,16 @@ export default function Catalog() {
                     <h2 className="text-3xl font-bold text-[#00274C]">Catálogo de Servicios y Repuestos</h2>
                     <p className="text-gray-600 mt-1">Administración de inventario y tarifas estandarizadas</p>
                 </div>
-                {/* Más adelante ocultaremos este botón para Clientes y Auditores */}
-                <button 
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-[#00274C] text-white font-bold px-5 py-2 rounded shadow hover:bg-blue-900 transition flex items-center gap-2"
-                >
-                    <span className="text-[#FDB913] text-xl leading-none">+</span> Nuevo Ítem
-                </button>
+                
+                {/* Control RBAC: Botón visible solo para el Admin */}
+                {isAdmin && (
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-[#00274C] text-white font-bold px-5 py-2 rounded shadow hover:bg-blue-900 transition flex items-center gap-2"
+                    >
+                        <span className="text-[#FDB913] text-xl leading-none">+</span> Nuevo Ítem
+                    </button>
+                )}
             </header>
 
             {error && <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-bold">{error}</p>}
@@ -133,7 +136,7 @@ export default function Catalog() {
                 </div>
             </div>
 
-            {isModalOpen && (
+            {isModalOpen && isAdmin && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded shadow-xl w-full max-w-lg overflow-hidden border-t-4 border-[#FDB913]">
                         <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
