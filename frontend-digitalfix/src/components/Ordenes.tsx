@@ -29,8 +29,14 @@ export default function Ordenes() {
     
     // Extracción de roles
     const userRoles = (accounts[0]?.idTokenClaims?.roles as string[]) || [];
-    const isSupervisor = userRoles.some(r => r.toLowerCase().startsWith("superv") || r.toLowerCase() === "operador");
-    const isCliente = userRoles.includes("Cliente");
+    const isSupervisor = userRoles.some(r => {
+        const role = r.toLowerCase();
+        return role.startsWith("superv") || role === "operador" || role === "admin" || role === "administrador";
+    });
+    const isCliente = userRoles.some(r => {
+        const role = r.toLowerCase();
+        return role === "cliente" || role === "admin" || role === "administrador";
+    });
 
     // Reglas de negocio granulares
     const canCreateOrders = isCliente || isSupervisor;

@@ -135,4 +135,41 @@ class ConsumerAckSupportTest {
         verify(accion, never()).accept(any());
         verify(channel).basicNack(TAG, false, false);
     }
+
+    @Test
+    void procesarMensaje_jsonValido_deberiaProcesarYEnviarAck() throws IOException {
+        Consumer<EventEnvelope> accion = accion();
+        String json = """
+                {
+                    "type": "WORKORDER_ASIGNADA",
+                    "eventId": "evento-json-1",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "traceId": "t1",
+                    "correlationId": "c1",
+                    "payload": {
+                        "orderId": 1,
+                        "clientName": "Carlos",
+                        "technicianName": "Pedro",
+                        "status": "ASIGNADA"
+                    }
+                }
+                """;
+        org.springframework.amqp.core.Message message = new org.springframework.amqp.core.Message(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        support.procesarMensaje("dispatch", message, channel, TAG, accion);
+
+        verify(accion, times(1)).accept(any());
+        verify(channel).basicAck(TAG, false);
+    }
+
+    @Test
+    void procesarMensaje_jsonInvalido_deberiaHacerNackSinExcepcionFatal() throws IOException {
+        Consumer<EventEnvelope> accion = accion();
+        org.springframework.amqp.core.Message message = new org.springframework.amqp.core.Message("texto corrupto no json".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        support.procesarMensaje("dispatch", message, channel, TAG, accion);
+
+        verify(accion, never()).accept(any());
+        verify(channel).basicNack(TAG, false, false);
+    }
 }

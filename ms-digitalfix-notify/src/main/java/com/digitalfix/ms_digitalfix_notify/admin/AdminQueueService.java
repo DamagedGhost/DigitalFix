@@ -8,6 +8,7 @@ import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueInformation;
 import org.springframework.amqp.core.TopicExchange;
@@ -15,6 +16,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,6 +44,7 @@ public class AdminQueueService {
     private final AmqpAdmin amqpAdmin;
     private final RabbitTemplate rabbitTemplate;
     private final DigitalfixRabbitProperties props;
+    private final JsonMapper jsonMapper = new JsonMapper();
 
     public AdminQueueService(AmqpAdmin amqpAdmin, RabbitTemplate rabbitTemplate,
                              DigitalfixRabbitProperties props) {
@@ -152,6 +155,15 @@ public class AdminQueueService {
                 break; // la DLQ quedó vacía
             }
             try {
+                if (message.getMessageProperties() != null) {
+                    message.getMessageProperties().getHeaders().remove("x-death");
+                    message.getMessageProperties().getHeaders().remove("x-first-death-exchange");
+                    message.getMessageProperties().getHeaders().remove("x-first-death-reason");
+                    message.getMessageProperties().getHeaders().remove("x-first-death-queue");
+                    message.getMessageProperties().getHeaders().remove("x-last-death-exchange");
+                    message.getMessageProperties().getHeaders().remove("x-last-death-reason");
+                    message.getMessageProperties().getHeaders().remove("x-last-death-queue");
+                }
                 rabbitTemplate.send(props.exchanges().direct(), def.directKey(), message);
                 movidos++;
             } catch (Exception e) {
@@ -183,11 +195,22 @@ public class AdminQueueService {
                 new WorkOrderEventPayload(orderId, "Cliente Demostración DLQ", null, "ASIGNADA")
         );
 
-        rabbitTemplate.convertAndSend(
-                props.exchanges().direct(),
-                props.queues().dispatch().directKey(),
-                faultyEnvelope
-        );
+        try {
+            byte[] body = jsonMapper.writeValueAsBytes(faultyEnvelope);
+            MessageProperties msgProps = new MessageProperties();
+            msgProps.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+            msgProps.setContentEncoding("UTF-8");
+            Message message = new Message(body, msgProps);
+
+            rabbitTemplate.send(
+                    props.exchanges().direct(),
+                    props.queues().dispatch().directKey(),
+                    message
+            );
+        } catch (Exception e) {
+            log.error("[ADMIN][SIMULACION] Error al serializar o publicar mensaje defectuoso: {}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al inyectar mensaje de prueba DLQ: " + e.getMessage());
+        }
 
         log.warn("[ADMIN][SIMULACION] Evento defectuoso publicado a exchange '{}' con routingKey '{}'. " +
                  "Orden sin técnico -> provocará desvío automático a DLQ ('{}')",

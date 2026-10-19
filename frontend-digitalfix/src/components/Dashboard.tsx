@@ -7,7 +7,7 @@ type AppNotification = {
     id: string;
     message: string;
     timestamp: string;
-    type: "EMAIL" | "REPORTE" | "DESPACHO" | "SYSTEM";
+    type: "EMAIL" | "REPORTE" | "DESPACHO" | "SYSTEM" | "DLQ";
 };
 
 // Añadimos el tipo de Orden para la tabla resumen
@@ -66,15 +66,25 @@ export default function Dashboard() {
 
     useEffect(() => {
         void loadDashboardData();
+        const handleRefresh = () => void loadDashboardData();
+        window.addEventListener('refresh-notifications', handleRefresh);
+
         const interval = setInterval(() => void loadDashboardData(), 15000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('refresh-notifications', handleRefresh);
+        };
     }, [fetchWithToken]);
 
     const getIcon = (type: string) => {
-        switch(type) {
+        switch(type?.toUpperCase()) {
             case "EMAIL": return "📧";
+            case "REPORT":
             case "REPORTE": return "📊";
+            case "DISPATCH":
             case "DESPACHO": return "🚚";
+            case "DLQ":
+            case "ERROR": return "⚠️";
             default: return "🔔";
         }
     };
@@ -150,18 +160,25 @@ export default function Dashboard() {
                         ) : notifications.length === 0 ? (
                             <p className="text-sm text-gray-500 text-center mt-4 font-medium">No hay notificaciones recientes.</p>
                         ) : (
-                            notifications.map(note => (
-                                <div key={note.id} className="p-3 bg-blue-50 border-l-4 border-[#00274C] rounded shadow-sm text-sm hover:shadow transition">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span>{getIcon(note.type)}</span>
-                                        <span className="font-bold text-gray-700">{note.type}</span>
-                                        <span className="text-xs text-gray-500 ml-auto">
-                                            {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                            notifications.map(note => {
+                                const isDlq = note.type === "DLQ" || note.message?.includes("[DLQ]");
+                                return (
+                                    <div key={note.id} className={`p-3 rounded shadow-sm text-sm hover:shadow transition border-l-4 ${
+                                        isDlq
+                                            ? "bg-red-50 border-red-600 text-red-900"
+                                            : "bg-blue-50 border-[#00274C]"
+                                    }`}>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span>{getIcon(note.type)}</span>
+                                            <span className={`font-bold ${isDlq ? "text-red-700" : "text-gray-700"}`}>{note.type}</span>
+                                            <span className="text-xs text-gray-500 ml-auto">
+                                                {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        <p className={`leading-snug ${isDlq ? "text-red-800 font-medium" : "text-gray-700"}`}>{note.message}</p>
                                     </div>
-                                    <p className="text-gray-700 leading-snug">{note.message}</p>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
