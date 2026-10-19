@@ -22,7 +22,7 @@ public class WorkOrderProxyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('Cliente', 'Supervi', 'Supervisor')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Cliente', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> create(@RequestBody String body) {
         return forward(() -> workOrdersRestClient.post()
                 .uri("/api/workorders")
@@ -57,7 +57,7 @@ public class WorkOrderProxyController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('Supervi', 'Supervisor')")
+    @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> updateStatus(@PathVariable Long id, @RequestBody String body) {
         return forward(() -> workOrdersRestClient.put()
                 .uri("/api/workorders/{id}/status", id)
@@ -84,6 +84,10 @@ public class WorkOrderProxyController {
             return ResponseEntity.status(status)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(ex.getResponseBodyAsString());
+        } catch (org.springframework.web.client.ResourceAccessException ex) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"status\":503,\"error\":\"Service Unavailable\",\"message\":\"El servicio de órdenes de trabajo no responde\"}");
         }
     }
 }
