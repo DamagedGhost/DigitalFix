@@ -55,7 +55,7 @@ public class ConsumerAckSupport {
                                 long deliveryTag, Consumer<EventEnvelope> accion) throws IOException {
         if (message == null || message.getBody() == null || message.getBody().length == 0) {
             log.error("[DLQ][{}] Mensaje vacío recibido", flujo);
-            historyService.registrar("[DLQ][" + flujo + "] Mensaje vacío descartado", "SYSTEM");
+            historyService.registrar("[DLQ][" + flujo + "] Mensaje vacío descartado", "DLQ");
             channel.basicNack(deliveryTag, false, false);
             return;
         }
@@ -73,7 +73,7 @@ public class ConsumerAckSupport {
             } catch (Exception e2) {
                 String bodyStr = new String(message.getBody(), StandardCharsets.UTF_8);
                 log.error("[DLQ][{}] Mensaje no deserializable a EventEnvelope: {}", flujo, bodyStr);
-                historyService.registrar("[DLQ][" + flujo + "] Mensaje con payload inválido", "SYSTEM");
+                historyService.registrar("[DLQ][" + flujo + "] Mensaje con payload inválido", "DLQ");
                 channel.basicNack(deliveryTag, false, false);
                 return;
             }
@@ -88,7 +88,7 @@ public class ConsumerAckSupport {
         // Sobre vacío o sin id: no se puede procesar ni deduplicar
         if (envelope == null || envelope.eventId() == null) {
             log.error("[DLQ][{}] Mensaje inválido (sin sobre o sin eventId): {}", flujo, envelope);
-            historyService.registrar("[DLQ][" + flujo + "] Mensaje inválido sin ID", "SYSTEM");
+            historyService.registrar("[DLQ][" + flujo + "] Mensaje inválido sin ID", "DLQ");
             channel.basicNack(deliveryTag, false, false);
             return;
         }
@@ -110,21 +110,21 @@ public class ConsumerAckSupport {
             // 4. Error sin arreglo
             log.error("[DLQ][{}] Error sin arreglo, se envía a la DLQ. Motivo: {} | Mensaje: {}",
                     flujo, e.getMessage(), envelope);
-            historyService.registrar("[DLQ][" + flujo + "] " + e.getMessage(), "SYSTEM");
+            historyService.registrar("[DLQ][" + flujo + "] " + e.getMessage(), "DLQ");
             channel.basicNack(deliveryTag, false, false);
 
         } catch (RecoverableMessageException e) {
             // 3. Se acabaron los reintentos
             log.error("[DLQ][{}] Se agotaron los {} intentos, se envía a la DLQ. Motivo: {} | Mensaje: {}",
                     flujo, retry.maxAttempts(), e.getMessage(), envelope);
-            historyService.registrar("[DLQ][" + flujo + "] Reintentos agotados: " + e.getMessage(), "SYSTEM");
+            historyService.registrar("[DLQ][" + flujo + "] Reintentos agotados: " + e.getMessage(), "DLQ");
             channel.basicNack(deliveryTag, false, false);
 
         } catch (Exception e) {
             // 4. Error inesperado: no se reintenta para no quedar en un ciclo infinito
             log.error("[DLQ][{}] Error inesperado, se envía a la DLQ. Motivo: {} | Mensaje: {}",
                     flujo, e.getMessage(), envelope, e);
-            historyService.registrar("[DLQ][" + flujo + "] Error inesperado: " + e.getMessage(), "SYSTEM");
+            historyService.registrar("[DLQ][" + flujo + "] Error inesperado: " + e.getMessage(), "DLQ");
             channel.basicNack(deliveryTag, false, false);
         }
     }
