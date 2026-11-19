@@ -31,3 +31,7 @@ digitalfix:
       email: email.send
       dispatch: dispatch.ticket
       report: report.gen
+  kafka:
+    # Local: los 3 brokers por sus puertos externos. En Docker se cambia con KAFKA_BOOTSTRAP_SERVERS.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    topic: workorders.events
