@@ -1,3 +1,26 @@
+server:
+  port: 8085
+
 spring:
   application:
     name: ms-digitalfix-audit
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/digitalfixdb}
+    username: ${SPRING_DATASOURCE_USERNAME:tu_usuario}
+    password: ${SPRING_DATASOURCE_PASSWORD:tu_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # tabla de historial propia: la BBDD es compartida con workorders y catalog
+    table: flyway_audit_history
+    baseline-on-migrate: true
+    baseline-version: 0
+
+digitalfix:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    audit-topic: audit.events
+    group-id: audit-group
