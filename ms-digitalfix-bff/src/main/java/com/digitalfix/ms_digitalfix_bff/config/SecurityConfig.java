@@ -23,6 +23,11 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        // Rutas de Kafka (auditoría, reportes y administración): solo Admin
+                        .requestMatchers("/api/audit/**", "/api/v1/audit/**",
+                                "/api/reports/**", "/api/v1/reports/**",
+                                "/api/admin/kafka/**", "/api/v1/admin/kafka/**")
+                        .hasAnyRole("Admin", "Administrador")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

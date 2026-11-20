@@ -11,10 +11,14 @@ services:
       - WORKORDERS_BASE_URL=http://workorders:8081
       - CATALOG_BASE_URL=http://catalog:8083
       - NOTIFY_BASE_URL=http://notify:8084
+      - AUDIT_BASE_URL=http://audit:8085
+      - REPORT_BASE_URL=http://report:8086
     depends_on:
       - workorders
       - catalog
       - notify
+      - audit    # NUEVO
+      - report   # NUEVO
 
   frontend:
     build:
@@ -43,6 +47,7 @@ services:
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=digitalfix
       - SPRING_RABBITMQ_PASSWORD=digitalfix
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092   # NUEVO
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -78,8 +83,43 @@ services:
       - RABBIT_PORT=5672
       - RABBIT_USER=digitalfix
       - RABBIT_PASS=digitalfix
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092   # NUEVO
     depends_on:
       rabbitmq:
+        condition: service_healthy
+
+  # NUEVO: consumidor de audit.events (auditoría)
+  audit:
+    build: ./ms-digitalfix-audit
+    container_name: audit-app
+    restart: always
+    expose:
+      - "8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/digitalfixdb
+      - SPRING_DATASOURCE_USERNAME=tu_usuario
+      - SPRING_DATASOURCE_PASSWORD=tu_password
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+  # NUEVO: consumidor de workorders.events (reportes en vivo)
+  report:
+    build: ./ms-digitalfix-report
+    container_name: report-app
+    restart: always
+    expose:
+      - "8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/digitalfixdb
+      - SPRING_DATASOURCE_USERNAME=tu_usuario
+      - SPRING_DATASOURCE_PASSWORD=tu_password
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m
+    depends_on:
+      postgres-db:
         condition: service_healthy
 
   postgres-db:
@@ -148,3 +188,8 @@ volumes:
   rabbitmq_data:
   rabbitmq2_data:
 
+# NUEVO: red compartida con el cluster de Kafka (infra/kafka/docker-compose.kafka.yml)
+networks:
+  default:
+    name: digitalfix-net
+    external: true

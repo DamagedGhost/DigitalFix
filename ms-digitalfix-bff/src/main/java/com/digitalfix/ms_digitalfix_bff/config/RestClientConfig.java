@@ -35,9 +35,21 @@ public class RestClientConfig {
         return createClientBuilder(baseUrl).build();
     }
 
-    // Cliente hacia ms-digitalfix-notify (administrador de colas)
+    // Cliente hacia ms-digitalfix-notify (administrador de colas y de Kafka)
     @Bean
     public RestClient notifyRestClient(@Value("${notify.base-url}") String baseUrl) {
+        return createClientBuilder(baseUrl).build();
+    }
+
+    // Cliente hacia ms-digitalfix-audit (consumidor de audit.events)
+    @Bean
+    public RestClient auditRestClient(@Value("${audit.base-url}") String baseUrl) {
+        return createClientBuilder(baseUrl).build();
+    }
+
+    // Cliente hacia ms-digitalfix-report (analítica sobre workorders.events)
+    @Bean
+    public RestClient reportRestClient(@Value("${report.base-url}") String baseUrl) {
         return createClientBuilder(baseUrl).build();
     }
 }
