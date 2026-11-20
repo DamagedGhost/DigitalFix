@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  */
 @RestController
 @RequestMapping({"/api/audit", "/api/v1/audit"})
-@PreAuthorize("hasAnyRole('Admin', 'Administrador') or hasAnyAuthority('Admin', 'ROLE_Admin', 'Administrador', 'ROLE_Administrador')")
+@PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Auditor') or hasAnyAuthority('Admin', 'ROLE_Admin', 'Administrador', 'ROLE_Administrador', 'Auditor', 'ROLE_Auditor')")
 public class AuditProxyController {
 
     private final RestClient auditRestClient;

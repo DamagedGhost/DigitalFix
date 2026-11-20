@@ -123,4 +123,4 @@ services:
 networks:
   digitalfix-net:
     name: digitalfix-net
-    external: true
+    driver: bridge

@@ -23,3 +23,9 @@ digitalfix:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
     workorders-topic: workorders.events
     group-id: report-group
+    # Parámetros del tópico de eventos de órdenes (7 días de retención para analítica)
+    partitions: 3
+    replicas: 3
+    min-insync-replicas: 2
+    cleanup-policy: delete
+    retention-ms: 604800000

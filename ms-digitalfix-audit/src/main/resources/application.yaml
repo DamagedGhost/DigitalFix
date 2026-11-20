@@ -24,3 +24,9 @@ digitalfix:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
     audit-topic: audit.events
     group-id: audit-group
+    # Parámetros del tópico de auditoría (30 días de retención para trazabilidad inmutable)
+    partitions: 3
+    replicas: 3
+    min-insync-replicas: 2
+    cleanup-policy: delete
+    retention-ms: 2592000000

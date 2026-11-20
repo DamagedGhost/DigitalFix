@@ -1,6 +1,8 @@
 package com.digitalfix.ms_digitalfix_report.config;
 
 import com.digitalfix.ms_digitalfix_report.dto.EventEnvelope;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -11,9 +13,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
@@ -89,5 +93,40 @@ public class KafkaConsumerConfig {
         // 3 hilos consumidores = uno por partición del tópico
         factory.setConcurrency(3);
         return factory;
+    }
+
+    @Bean
+    public KafkaAdmin kafkaAdmin(ReportKafkaProperties props) {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, props.bootstrapServers());
+        KafkaAdmin admin = new KafkaAdmin(configs);
+        admin.setFatalIfBrokerNotAvailable(false);
+        return admin;
+    }
+
+    @Bean
+    public NewTopic workordersEventsTopic(ReportKafkaProperties props) {
+        return TopicBuilder.name(props.workordersTopic())
+                .partitions(3)
+                .replicas(3)
+                .configs(Map.of(
+                        "cleanup.policy", "delete",
+                        "retention.ms", "604800000", // 7 días para eventos operativos de analítica
+                        "min.insync.replicas", "2"
+                ))
+                .build();
+    }
+
+    @Bean
+    public NewTopic workordersEventsDltTopic(ReportKafkaProperties props) {
+        return TopicBuilder.name(props.workordersTopic() + ".DLT")
+                .partitions(3)
+                .replicas(3)
+                .configs(Map.of(
+                        "cleanup.policy", "delete",
+                        "retention.ms", "1209600000", // 14 días para diagnóstico de fallos
+                        "min.insync.replicas", "2"
+                ))
+                .build();
     }
 }

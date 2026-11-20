@@ -50,8 +50,9 @@ public class KafkaAdminService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaAdminService.class);
 
-    // Tópicos del sistema: no se pueden borrar
-    private static final Set<String> TOPICOS_SISTEMA = Set.of("workorders.events", "audit.events");
+    // Tópicos del sistema (principales y Dead Letter Topics): no se pueden borrar
+    private static final Set<String> TOPICOS_SISTEMA = Set.of(
+            "workorders.events", "audit.events", "workorders.events.DLT", "audit.events.DLT");
     private static final Set<String> POLITICAS = Set.of("delete", "compact", "delete,compact", "compact,delete");
     // Solo letras, números, punto, guion y guion bajo (sin espacios)
     private static final Pattern NOMBRE_VALIDO = Pattern.compile("^[a-zA-Z0-9._-]+$");
