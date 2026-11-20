@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useApi } from "../useApi";
 import { useMsal } from "@azure/msal-react";
 import AdminRabbitPanel from "./AdminRabbitPanel";
+import AdminKafkaPanel from "./AdminKafkaPanel";
 
 type AppNotification = {
     id: string;
@@ -23,7 +24,7 @@ export default function Dashboard() {
     const { fetchWithToken } = useApi();
     const { accounts } = useMsal();
     const userRoles = (accounts[0]?.idTokenClaims?.roles as string[]) || [];
-    const isAdmin = userRoles.includes("Admin");
+    const isAdmin = userRoles.some(r => r.toLowerCase().startsWith("admin"));
 
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [recentOrders, setRecentOrders] = useState<WorkOrder[]>([]);
@@ -146,6 +147,9 @@ export default function Dashboard() {
                     
                     {/* Panel de RabbitMQ (Solo Admin) */}
                     {isAdmin && <AdminRabbitPanel />}
+
+                    {/* Panel de Kafka: Tópicos y Consumer Groups (Solo Admin) */}
+                    {isAdmin && <AdminKafkaPanel />}
                 </div>
 
                 {/* Columna Derecha: Feed de Notificaciones Asíncronas */}

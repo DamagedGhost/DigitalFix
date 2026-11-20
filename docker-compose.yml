@@ -1,4 +1,6 @@
 services:
+
+  # ---------- Inicializacion BFF intermediario ----------
   bff:
     build: ./ms-digitalfix-bff
     container_name: bff-app
@@ -20,6 +22,7 @@ services:
       - audit    # NUEVO
       - report   # NUEVO
 
+  # ---------- Inicializacion Frontend ----------
   frontend:
     build:
       context: .
@@ -31,6 +34,7 @@ services:
     depends_on:
       - bff
 
+  # ---------- Inicializacion microservicios: workorders ----------
   workorders:
     build: ./ms-digitalfix-workorders
     container_name: workorders-app
@@ -54,6 +58,7 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # ---------- Inicializacion microservicios: catalog ----------
   catalog:
     build: ./ms-digitalfix-catalog
     container_name: catalog-app
@@ -70,6 +75,7 @@ services:
       postgres-db:
         condition: service_healthy
 
+  # ---------- Inicializacion microservicios: notify ----------
   notify:
     build: ./ms-digitalfix-notify
     container_name: notify-app
@@ -88,7 +94,7 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # NUEVO: consumidor de audit.events (auditoría)
+  # ---------- NUEVO: consumidor de audit.events (auditoría)
   audit:
     build: ./ms-digitalfix-audit
     container_name: audit-app
@@ -105,7 +111,7 @@ services:
       postgres-db:
         condition: service_healthy
 
-  # NUEVO: consumidor de workorders.events (reportes en vivo)
+  # ---------- NUEVO: consumidor de workorders.events (reportes en vivo)
   report:
     build: ./ms-digitalfix-report
     container_name: report-app
@@ -122,6 +128,7 @@ services:
       postgres-db:
         condition: service_healthy
 
+  # ---------- Inicializacion base de datos Postgres ----------
   postgres-db:
     image: postgres:15-alpine
     container_name: digitalfix-postgres
@@ -140,6 +147,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------- Inicializacion cluster RabbitMQ (nodo 1)
   rabbitmq:
     image: rabbitmq:3-management
     container_name: digitalfix-rabbitmq
@@ -161,6 +169,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------- Inicializacion cluster RabbitMQ (2 nodos)
   rabbitmq2:
     image: rabbitmq:3-management
     container_name: digitalfix-rabbitmq2
@@ -183,12 +192,13 @@ services:
       timeout: 5s
       retries: 5
 
+# ---------- Definición de volúmenes para persistencia de datos ----------
 volumes:
   pgdata:
   rabbitmq_data:
   rabbitmq2_data:
 
-# NUEVO: red compartida con el cluster de Kafka (infra/kafka/docker-compose.kafka.yml)
+# ---------- NUEVO: red compartida con el cluster de Kafka (infra/kafka/docker-compose.kafka.yml)
 networks:
   default:
     name: digitalfix-net
