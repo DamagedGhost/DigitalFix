@@ -5,6 +5,7 @@ import com.digitalfix.ms_digitalfix_notify.event.EventEnvelope;
 import com.digitalfix.ms_digitalfix_notify.event.WorkOrderEventPayload;
 import com.digitalfix.ms_digitalfix_notify.exception.RecoverableMessageException;
 import com.digitalfix.ms_digitalfix_notify.exception.UnrecoverableMessageException;
+import com.digitalfix.ms_digitalfix_notify.kafka.AuditKafkaProducer;
 import com.rabbitmq.client.Channel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,8 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -25,7 +28,8 @@ import static org.mockito.Mockito.verify;
 
 /**
  * Pruebas de las reglas de ACK/NACK: camino feliz, error temporal con reintentos,
- * error sin arreglo e idempotencia.
+ * error sin arreglo e idempotencia. También revisan que cada resultado se publique
+ * en Kafka como evento de auditoría (con un mock, sin necesitar Kafka).
  */
 @ExtendWith(MockitoExtension.class)
 class ConsumerAckSupportTest {
@@ -35,13 +39,19 @@ class ConsumerAckSupportTest {
     @Mock
     private Channel channel;
 
+    @Mock
+    private AuditKafkaProducer auditProducer;
+
     private ConsumerAckSupport support;
     private EventEnvelope envelope;
 
     @BeforeEach
     void setUp() {
         // 3 intentos y 1 ms de espera para que el test sea rápido
-        support = new ConsumerAckSupport(new ConsumerRetryProperties(3, 1), new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService());
+        support = new ConsumerAckSupport(
+                new ConsumerRetryProperties(3, 1),
+                new com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService(),
+                auditProducer);
         envelope = new EventEnvelope("WORKORDER_ASIGNADA", "evento-1", "2026-01-01T00:00:00Z",
                 "trace-1", "workorder-1",
                 new WorkOrderEventPayload(1L, "Maria Perez", "Pedro", "ASIGNADA"));
@@ -61,6 +71,7 @@ class ConsumerAckSupportTest {
         verify(accion, times(1)).accept(envelope);
         verify(channel).basicAck(TAG, false);
         verify(channel, never()).basicNack(TAG, false, false);
+        verify(auditProducer).publicar(eq("email"), eq(envelope), eq("PROCESADO"), isNull());
     }
 
     @Test
@@ -73,6 +84,7 @@ class ConsumerAckSupportTest {
         verify(accion, times(1)).accept(envelope);   // un solo intento
         verify(channel).basicNack(TAG, false, false);
         verify(channel, never()).basicAck(TAG, false);
+        verify(auditProducer).publicar(eq("dispatch"), eq(envelope), eq("ENVIADO_A_DLQ"), any());
     }
 
     @Test
@@ -85,6 +97,7 @@ class ConsumerAckSupportTest {
         verify(accion, times(3)).accept(envelope);   // los 3 intentos
         verify(channel).basicNack(TAG, false, false);
         verify(channel, never()).basicAck(TAG, false);
+        verify(auditProducer).publicar(eq("email"), eq(envelope), eq("ENVIADO_A_DLQ"), any());
     }
 
     @Test
@@ -99,6 +112,7 @@ class ConsumerAckSupportTest {
         verify(accion, times(2)).accept(envelope);   // falla una vez y luego funciona
         verify(channel).basicAck(TAG, false);
         verify(channel, never()).basicNack(TAG, false, false);
+        verify(auditProducer).publicar(eq("email"), eq(envelope), eq("PROCESADO"), isNull());
     }
 
     @Test
@@ -110,6 +124,7 @@ class ConsumerAckSupportTest {
 
         verify(accion, times(1)).accept(envelope);
         verify(channel).basicNack(TAG, false, false);
+        verify(auditProducer).publicar(eq("report"), eq(envelope), eq("ENVIADO_A_DLQ"), any());
     }
 
     @Test
@@ -123,6 +138,8 @@ class ConsumerAckSupportTest {
         verify(accion, times(1)).accept(envelope);   // el segundo no se procesa
         verify(channel).basicAck(TAG, false);
         verify(channel).basicAck(2L, false);
+        // el repetido no genera un segundo evento de auditoría
+        verify(auditProducer, times(1)).publicar(eq("email"), eq(envelope), eq("PROCESADO"), isNull());
     }
 
     @Test
@@ -134,6 +151,7 @@ class ConsumerAckSupportTest {
 
         verify(accion, never()).accept(any());
         verify(channel).basicNack(TAG, false, false);
+        verify(auditProducer).publicar(eq("email"), eq(sinId), eq("ENVIADO_A_DLQ"), any());
     }
 
     @Test
@@ -160,6 +178,7 @@ class ConsumerAckSupportTest {
 
         verify(accion, times(1)).accept(any());
         verify(channel).basicAck(TAG, false);
+        verify(auditProducer).publicar(eq("dispatch"), any(), eq("PROCESADO"), isNull());
     }
 
     @Test

@@ -21,3 +21,9 @@ catalog:
 
 notify:
   base-url: ${NOTIFY_BASE_URL:http://localhost:8084}
+
+audit:
+  base-url: ${AUDIT_BASE_URL:http://localhost:8085}
+
+report:
+  base-url: ${REPORT_BASE_URL:http://localhost:8086}

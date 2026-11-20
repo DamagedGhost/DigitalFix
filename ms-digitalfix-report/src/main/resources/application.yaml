@@ -1,3 +1,31 @@
+server:
+  port: 8086
+
 spring:
   application:
     name: ms-digitalfix-report
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/digitalfixdb}
+    username: ${SPRING_DATASOURCE_USERNAME:tu_usuario}
+    password: ${SPRING_DATASOURCE_PASSWORD:tu_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    table: flyway_report_history
+    baseline-on-migrate: true
+    baseline-version: 0
+
+digitalfix:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    workorders-topic: workorders.events
+    group-id: report-group
+    # Parámetros del tópico de eventos de órdenes (7 días de retención para analítica)
+    partitions: 3
+    replicas: 3
+    min-insync-replicas: 2
+    cleanup-policy: delete
+    retention-ms: 604800000

@@ -33,13 +33,9 @@ export default function Ordenes() {
         const role = r.toLowerCase();
         return role.startsWith("superv") || role === "operador" || role === "admin" || role === "administrador";
     });
-    const isCliente = userRoles.some(r => {
-        const role = r.toLowerCase();
-        return role === "cliente" || role === "admin" || role === "administrador";
-    });
 
-    // Reglas de negocio granulares
-    const canCreateOrders = isCliente || isSupervisor;
+    // Reglas de negocio granulares: solo Admin y Supervisor pueden crear y gestionar órdenes
+    const canCreateOrders = isSupervisor;
     const canManageState = isSupervisor;
 
     const [ordenes, setOrdenes] = useState<WorkOrder[]>([]);
@@ -155,7 +151,7 @@ export default function Ordenes() {
                     <p className="text-gray-600 mt-1">Gestión y seguimiento de mantenciones en terreno</p>
                 </div>
                 
-                {/* Control RBAC: Solo visible para Cliente y Supervisor */}
+                {/* Control RBAC: Solo visible para Admin y Supervisor */}
                 {canCreateOrders && (
                     <button 
                         onClick={() => setIsModalOpen(true)}

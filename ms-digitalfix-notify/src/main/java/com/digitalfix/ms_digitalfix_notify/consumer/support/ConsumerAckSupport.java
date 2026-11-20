@@ -4,6 +4,7 @@ import com.digitalfix.ms_digitalfix_notify.config.ConsumerRetryProperties;
 import com.digitalfix.ms_digitalfix_notify.event.EventEnvelope;
 import com.digitalfix.ms_digitalfix_notify.exception.RecoverableMessageException;
 import com.digitalfix.ms_digitalfix_notify.exception.UnrecoverableMessageException;
+import com.digitalfix.ms_digitalfix_notify.kafka.AuditKafkaProducer; // NUEVO
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ import java.util.function.Consumer;
  *  4. Error sin arreglo o error inesperado   -> NACK sin requeue -> DLQ, sin reintentos.
  *
  * Todo mensaje que va a la DLQ queda anotado en el log con el motivo.
+ * Además, cada resultado (procesado o DLQ) se publica en Kafka (audit.events) para auditoría.
  */
 @Component
 public class ConsumerAckSupport {
@@ -35,15 +37,18 @@ public class ConsumerAckSupport {
 
     private final ConsumerRetryProperties retry;
     private final com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService;
+    private final AuditKafkaProducer auditProducer; // NUEVO
     private final JsonMapper jsonMapper = new JsonMapper();
 
     // eventIds ya procesados (en memoria, alcanza para esta evaluación)
     private final Set<String> procesados = ConcurrentHashMap.newKeySet();
 
     public ConsumerAckSupport(ConsumerRetryProperties retry,
-                              com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService) {
+                              com.digitalfix.ms_digitalfix_notify.notification.NotificationHistoryService historyService,
+                              AuditKafkaProducer auditProducer) { // NUEVO
         this.retry = retry;
         this.historyService = historyService;
+        this.auditProducer = auditProducer; // NUEVO
     }
 
     /**
@@ -90,6 +95,7 @@ public class ConsumerAckSupport {
             log.error("[DLQ][{}] Mensaje inválido (sin sobre o sin eventId): {}", flujo, envelope);
             historyService.registrar("[DLQ][" + flujo + "] Mensaje inválido sin ID", "DLQ");
             channel.basicNack(deliveryTag, false, false);
+            auditProducer.publicar(flujo, envelope, "ENVIADO_A_DLQ", "Mensaje inválido sin ID"); // NUEVO
             return;
         }
 
@@ -105,6 +111,7 @@ public class ConsumerAckSupport {
             procesados.add(envelope.eventId());
             // 2. Todo bien
             channel.basicAck(deliveryTag, false);
+            auditProducer.publicar(flujo, envelope, "PROCESADO", null); // NUEVO
 
         } catch (UnrecoverableMessageException e) {
             // 4. Error sin arreglo
@@ -112,6 +119,7 @@ public class ConsumerAckSupport {
                     flujo, e.getMessage(), envelope);
             historyService.registrar("[DLQ][" + flujo + "] " + e.getMessage(), "DLQ");
             channel.basicNack(deliveryTag, false, false);
+            auditProducer.publicar(flujo, envelope, "ENVIADO_A_DLQ", e.getMessage()); // NUEVO
 
         } catch (RecoverableMessageException e) {
             // 3. Se acabaron los reintentos
@@ -119,6 +127,7 @@ public class ConsumerAckSupport {
                     flujo, retry.maxAttempts(), e.getMessage(), envelope);
             historyService.registrar("[DLQ][" + flujo + "] Reintentos agotados: " + e.getMessage(), "DLQ");
             channel.basicNack(deliveryTag, false, false);
+            auditProducer.publicar(flujo, envelope, "ENVIADO_A_DLQ", "Reintentos agotados: " + e.getMessage()); // NUEVO
 
         } catch (Exception e) {
             // 4. Error inesperado: no se reintenta para no quedar en un ciclo infinito
@@ -126,6 +135,7 @@ public class ConsumerAckSupport {
                     flujo, e.getMessage(), envelope, e);
             historyService.registrar("[DLQ][" + flujo + "] Error inesperado: " + e.getMessage(), "DLQ");
             channel.basicNack(deliveryTag, false, false);
+            auditProducer.publicar(flujo, envelope, "ENVIADO_A_DLQ", "Error inesperado: " + e.getMessage()); // NUEVO
         }
     }
 

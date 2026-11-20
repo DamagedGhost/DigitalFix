@@ -45,3 +45,29 @@ digitalfix:
     retry:
       max-attempts: 3   # cuántas veces se intenta un error temporal
       backoff-ms: 2000  # espera entre intentos
+  kafka:
+    # Local: los 3 brokers por sus puertos externos. En Docker se cambia con KAFKA_BOOTSTRAP_SERVERS.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    audit-topic: audit.events
+    # Parámetros de administración de tópicos ajustados a cada flujo de datos (Criterio 7 EP5)
+    topics:
+      workorders:
+        name: workorders.events
+        partitions: 3
+        replicas: 3
+        min-insync-replicas: 2
+        cleanup-policy: delete
+        retention-ms: 604800000    # 7 días (eventos operativos de órdenes para analítica)
+      audit:
+        name: audit.events
+        partitions: 3
+        replicas: 3
+        min-insync-replicas: 2
+        cleanup-policy: delete
+        retention-ms: 2592000000   # 30 días (trazabilidad e historial inmutable de auditoría)
+      dlt:
+        partitions: 3
+        replicas: 3
+        min-insync-replicas: 2
+        cleanup-policy: delete
+        retention-ms: 1209600000   # 14 días (Dead Letter Topics para inspección de fallos)

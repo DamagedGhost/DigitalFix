@@ -3,6 +3,7 @@ package com.digitalfix.ms_digitalfix_workorders.service;
 import com.digitalfix.ms_digitalfix_workorders.dto.StatusUpdateRequest;
 import com.digitalfix.ms_digitalfix_workorders.dto.WorkOrderRequest;
 import com.digitalfix.ms_digitalfix_workorders.messaging.WorkOrderEventProducer;
+import com.digitalfix.ms_digitalfix_workorders.messaging.WorkOrderKafkaProducer;
 import com.digitalfix.ms_digitalfix_workorders.model.WorkOrder;
 import com.digitalfix.ms_digitalfix_workorders.model.WorkOrderStatus;
 import com.digitalfix.ms_digitalfix_workorders.repository.WorkOrderRepository;
@@ -16,10 +17,14 @@ public class WorkOrderService {
 
     private final WorkOrderRepository repository;
     private final WorkOrderEventProducer eventProducer;
+    private final WorkOrderKafkaProducer kafkaProducer;
 
-    public WorkOrderService(WorkOrderRepository repository, WorkOrderEventProducer eventProducer) {
+    public WorkOrderService(WorkOrderRepository repository,
+                            WorkOrderEventProducer eventProducer,
+                            WorkOrderKafkaProducer kafkaProducer) {
         this.repository = repository;
         this.eventProducer = eventProducer;
+        this.kafkaProducer = kafkaProducer;
     }
 
     public WorkOrder create(WorkOrderRequest request) {
@@ -27,7 +32,11 @@ public class WorkOrderService {
         order.setClientName(request.getClientName());
         order.setDescription(request.getDescription());
         order.setStatus(WorkOrderStatus.CREADA);
-        return repository.save(order);
+        WorkOrder saved = repository.save(order);
+
+        // Avisa por Kafka que se creó la orden (si falla, no afecta la creación)
+        kafkaProducer.publish(saved);
+        return saved;
     }
 
     public WorkOrder findById(Long id) {
@@ -64,8 +73,9 @@ public class WorkOrderService {
         }
         WorkOrder saved = repository.save(order);
 
-        // Después de guardar, avisa por RabbitMQ (si falla, no afecta el cambio de estado)
+        // Después de guardar, avisa por RabbitMQ y por Kafka (si fallan, no afectan el cambio de estado)
         eventProducer.publishStatusChange(saved);
+        kafkaProducer.publish(saved);
         return saved;
     }
 }
