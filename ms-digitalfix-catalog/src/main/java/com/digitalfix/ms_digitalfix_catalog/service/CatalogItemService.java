@@ -8,6 +8,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Lógica de negocio del catálogo de servicios técnicos y repuestos.
+ * Se encarga del CRUD y de validar que el stock nunca quede negativo al descontar.
+ */
 @Service
 public class CatalogItemService {
 
@@ -35,6 +39,7 @@ public class CatalogItemService {
                 .orElseThrow(() -> new IllegalArgumentException("Item no encontrado: " + id));
     }
 
+    // Actualización parcial: solo pisa tarifa o stock si realmente vienen en el request
     public CatalogItem updateTarifaStock(Long id, StockUpdateRequest request) {
         CatalogItem item = findById(id);
         if (request.getPrice() != null) {
@@ -46,6 +51,7 @@ public class CatalogItemService {
         return repository.save(item);
     }
 
+    // Descuenta stock validando que haya unidades suficientes antes de guardar
     public void decreaseStock(Long id, int amount) {
         CatalogItem item = findById(id);
         int newStock = item.getStock() - amount;

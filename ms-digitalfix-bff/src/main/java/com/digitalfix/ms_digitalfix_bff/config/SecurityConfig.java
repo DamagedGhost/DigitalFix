@@ -11,6 +11,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+/**
+ * Seguridad del BFF como Resource Server de Microsoft Entra ID.
+ * Acá valido el JWT entrante, extraigo el claim "roles" del token y aplico
+ * las reglas de acceso por ruta antes de reenviar la petición a los microservicios.
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -18,6 +23,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // API REST con JWT: no uso sesiones en servidor ni cookies, así que desactivo CSRF
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -30,10 +36,11 @@ public class SecurityConfig {
                         .hasAnyRole("Admin", "Administrador", "Supervisor")
                         .requestMatchers("/api/admin/kafka/**", "/api/v1/admin/kafka/**")
                         .hasAnyRole("Admin", "Administrador")
+                        // El resto exige estar autenticado y el detalle de roles se controla con @PreAuthorize en cada controller
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
-                        // 403: Usuario autenticado pero sin rol suficiente
+                        // 403: Usuario autenticado pero sin rol suficiente (devuelvo JSON claro para que el front muestre el aviso)
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpStatus.FORBIDDEN.value());
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -57,6 +64,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Por defecto Spring busca scopes ("scp"), pero Entra ID manda los perfiles en el claim "roles".
+     * Le agrego el prefijo "ROLE_" para que funcione directo con hasAnyRole(...) en SecurityConfig y @PreAuthorize.
+     */
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();

@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+/**
+ * Proxy del BFF hacia ms-digitalfix-catalog.
+ * Admin puede crear y editar tarifas/stock; Supervisor solo tiene acceso de lectura.
+ */
 @RestController
 @RequestMapping({"/api/catalog", "/api/v1/catalog"})
 public class CatalogProxyController {
@@ -19,6 +23,7 @@ public class CatalogProxyController {
         this.catalogRestClient = catalogRestClient;
     }
 
+    // Alta de un nuevo servicio/repuesto en el catálogo (solo Admin)
     @PostMapping
     @PreAuthorize("hasAnyRole('Admin', 'Administrador')")
     public ResponseEntity<String> create(@RequestBody String body) {
@@ -30,6 +35,7 @@ public class CatalogProxyController {
                 .toEntity(String.class));
     }
 
+    // Listado completo del catálogo
     @GetMapping
     @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> list() {
@@ -39,6 +45,7 @@ public class CatalogProxyController {
                 .toEntity(String.class));
     }
 
+    // Consulta de un ítem específico por ID
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('Admin', 'Administrador', 'Supervi', 'Supervisor')")
     public ResponseEntity<String> getById(@PathVariable Long id) {
@@ -48,6 +55,7 @@ public class CatalogProxyController {
                 .toEntity(String.class));
     }
 
+    // Actualización de tarifa y/o stock disponible (solo Admin)
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('Admin', 'Administrador')")
     public ResponseEntity<String> updateTarifaStock(@PathVariable Long id, @RequestBody String body) {
@@ -59,6 +67,7 @@ public class CatalogProxyController {
                 .toEntity(String.class));
     }
 
+    // Reenvía el error HTTP original del microservicio de catálogo si responde 4xx/5xx
     private ResponseEntity<String> forward(java.util.function.Supplier<ResponseEntity<String>> call) {
         try {
             return call.get();

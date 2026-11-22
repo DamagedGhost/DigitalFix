@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+/**
+ * Historial en memoria (últimos 50 eventos) para alimentar el panel "Eventos Asíncronos" del Dashboard.
+ * Uso ConcurrentLinkedDeque porque varios hilos de RabbitMQ escriben al mismo tiempo mientras el BFF consulta.
+ */
 @Service
 public class NotificationHistoryService {
 

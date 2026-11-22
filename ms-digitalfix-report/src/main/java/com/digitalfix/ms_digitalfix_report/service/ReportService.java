@@ -14,6 +14,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Lógica de analítica en streaming sobre las órdenes.
+ * En vez de consultar a ms-workorders cada vez que el Admin abre Reportería, mantengo una vista
+ * materializada propia (tabla order_snapshots) que se actualiza sola con cada evento de Kafka.
+ */
 @Service
 public class ReportService {
 
@@ -25,6 +30,11 @@ public class ReportService {
         this.repository = repository;
     }
 
+    /**
+     * Aplica un evento de orden sobre el snapshot local (inserta si es nueva, actualiza si ya existe).
+     * - Si el payload viene incompleto tiro IllegalArgumentException para que Kafka lo mande directo a la DLT.
+     * - Si ya procesé ese eventId, lo ignoro para garantizar idempotencia ante reentregas.
+     */
     @Transactional
     public void aplicarEvento(EventEnvelope evento) {
         if (evento == null || evento.eventId() == null || evento.payload() == null
@@ -42,6 +52,7 @@ public class ReportService {
 
         snapshot.setOrderId(p.orderId());
         snapshot.setClientName(p.clientName());
+        // Solo piso el técnico si el evento trae uno; así un cambio posterior sin técnico (ej. cierre) no borra al asignado
         if (p.technicianName() != null) {
             snapshot.setTechnicianName(p.technicianName());
         }
@@ -54,11 +65,13 @@ public class ReportService {
                 p.orderId(), p.status(), snapshot.getTechnicianName());
     }
 
+    // Conteo agrupado por estado (CREADA, ASIGNADA, CERRADA, etc.) para las tarjetas y gráficos del front
     @Transactional(readOnly = true)
     public Map<String, Long> porEstado() {
         return aMapa(repository.contarPorEstado());
     }
 
+    // Ranking de carga por técnico ordenado de mayor a menor
     @Transactional(readOnly = true)
     public Map<String, Long> porTecnico() {
         return aMapa(repository.contarPorTecnico());
@@ -69,6 +82,7 @@ public class ReportService {
         return repository.count();
     }
 
+    // Convierte la proyección JPA (lista de clave/total) a un Map que conserva el orden de la query SQL
     private Map<String, Long> aMapa(List<OrderSnapshotRepository.Conteo> filas) {
         Map<String, Long> mapa = new LinkedHashMap<>();
         for (OrderSnapshotRepository.Conteo fila : filas) {

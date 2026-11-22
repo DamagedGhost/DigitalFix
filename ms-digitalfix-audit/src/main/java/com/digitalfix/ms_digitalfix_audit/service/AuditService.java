@@ -41,6 +41,7 @@ public class AuditService {
         r.setSourceService(e.sourceService());
         r.setFlow(e.flow());
         r.setOutcome(e.outcome());
+        // Recorto el motivo a 500 caracteres para respetar el límite de la columna VARCHAR(500) en PostgreSQL
         r.setReason(e.reason() != null && e.reason().length() > 500 ? e.reason().substring(0, 500) : e.reason());
         r.setOrderId(e.orderId());
         r.setOriginalEventId(e.originalEventId());
@@ -52,6 +53,8 @@ public class AuditService {
         log.info("[AUDIT] Registrado: flujo={}, resultado={}, orden={}", e.flow(), e.outcome(), e.orderId());
     }
 
+    // Consulta paginada/filtrada para la vista de Auditoría: por resultado (PROCESADO/ENVIADO_A_DLQ),
+    // por ID de orden, o por defecto los últimos 100 registros más recientes.
     public List<AuditRecord> listar(String outcome, Long orderId) {
         if (outcome != null) {
             return repository.findByOutcomeOrderByIdDesc(outcome);

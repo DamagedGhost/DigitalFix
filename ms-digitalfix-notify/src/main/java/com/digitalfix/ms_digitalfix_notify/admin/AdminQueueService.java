@@ -155,6 +155,8 @@ public class AdminQueueService {
                 break; // la DLQ quedó vacía
             }
             try {
+                // Limpio los headers x-death que agrega RabbitMQ al rechazar un mensaje;
+                // si no los borro, Spring AMQP detecta que ya vino de una DLQ y lo descarta al reintentarlo.
                 if (message.getMessageProperties() != null) {
                     message.getMessageProperties().getHeaders().remove("x-death");
                     message.getMessageProperties().getHeaders().remove("x-first-death-exchange");
@@ -196,6 +198,8 @@ public class AdminQueueService {
         );
 
         try {
+            // Serializo a JSON manualmente porque el MessageConverter global es SimpleMessageConverter
+            // (así evito el ClassNotFoundException con __TypeId__ entre workorders y notify)
             byte[] body = jsonMapper.writeValueAsBytes(faultyEnvelope);
             MessageProperties msgProps = new MessageProperties();
             msgProps.setContentType(MessageProperties.CONTENT_TYPE_JSON);

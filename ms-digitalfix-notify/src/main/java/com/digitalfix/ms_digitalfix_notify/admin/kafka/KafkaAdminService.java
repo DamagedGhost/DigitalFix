@@ -69,6 +69,7 @@ public class KafkaAdminService {
 
     // ---------- Tópicos ----------
 
+    // Trae todos los tópicos del clúster ordenados alfabéticamente y arma el detalle de cada uno
     public List<TopicInfo> listarTopicos() {
         try (AdminClient admin = factory.crear()) {
             Set<String> nombres = new TreeSet<>(esperar(admin.listTopics().names()));
@@ -85,6 +86,11 @@ public class KafkaAdminService {
         }
     }
 
+    /**
+     * Crea un tópico nuevo validando primero todos los parámetros (nombre, particiones, réplicas,
+     * retención y política de limpieza) antes de abrir conexión con Kafka.
+     * Si no mandan particiones o réplicas, uso 3 por defecto para aprovechar los 3 brokers del clúster.
+     */
     public TopicInfo crear(CreateTopicRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Falta el cuerpo de la petición");
@@ -129,6 +135,11 @@ public class KafkaAdminService {
         }
     }
 
+    /**
+     * Modifica en caliente la configuración de un tópico existente (retention.ms, cleanup.policy,
+     * min.insync.replicas) y/o aumenta sus particiones.
+     * En Kafka las particiones nunca se pueden reducir, por eso comparo contra el tamaño actual y tiro 409 si intentan bajarlas.
+     */
     public TopicInfo modificar(String nombre, UpdateTopicRequest request) {
         if (request == null || (request.partitions() == null && request.retentionMs() == null
                 && request.cleanupPolicy() == null && request.minInsyncReplicas() == null)) {
@@ -176,6 +187,7 @@ public class KafkaAdminService {
         }
     }
 
+    // Borra un tópico personalizado; bloqueo los del sistema (workorders/audit y sus DLT) para no romper el flujo en vivo
     public void eliminar(String nombre) {
         if (TOPICOS_SISTEMA.contains(nombre)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -189,6 +201,7 @@ public class KafkaAdminService {
 
     // ---------- Consumer groups ----------
 
+    // Lista todos los consumer groups registrados en el clúster (ej. audit-group, report-group) con su lag calculado
     public List<ConsumerGroupInfo> listarGrupos() {
         try (AdminClient admin = factory.crear()) {
             List<String> ids = esperar(admin.listConsumerGroups().all()).stream()
@@ -223,6 +236,7 @@ public class KafkaAdminService {
 
     // ---------- Helpers ----------
 
+    // Consulta la estructura (particiones y réplicas) + las configs dinámicas (retención, cleanup, min ISR) en dos llamadas por lote
     private List<TopicInfo> armarTopicos(AdminClient admin, Collection<String> nombres) {
         Map<String, TopicDescription> descripciones = esperar(admin.describeTopics(nombres).allTopicNames());
         List<ConfigResource> recursos = nombres.stream()
@@ -244,6 +258,12 @@ public class KafkaAdminService {
         return resultado;
     }
 
+    /**
+     * Calcula el lag real de un consumer group partición por partición:
+     * 1) Pide el último offset confirmado por el grupo (donde quedó leyendo).
+     * 2) Pide el offset final actual del tópico (OffsetSpec.latest()).
+     * 3) lag = fin - actual (si es 0 significa que el consumidor está al día).
+     */
     private ConsumerGroupInfo armarGrupo(AdminClient admin, ConsumerGroupDescription d) {
         String groupId = d.groupId();
         Map<TopicPartition, OffsetAndMetadata> confirmados =

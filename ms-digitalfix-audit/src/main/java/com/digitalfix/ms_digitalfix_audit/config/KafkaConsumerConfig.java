@@ -95,6 +95,8 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
+    // Admin de Spring Kafka para asegurar que los tópicos existan al arrancar.
+    // Pongo fatalIfBrokerNotAvailable=false para que el microservicio no muera si Kafka demora unos segundos más en subir.
     @Bean
     public KafkaAdmin kafkaAdmin(AuditKafkaProperties props) {
         Map<String, Object> configs = new HashMap<>();
@@ -104,6 +106,7 @@ public class KafkaConsumerConfig {
         return admin;
     }
 
+    // Tópico principal de auditoría: 3 particiones (calza con concurrency=3), 3 réplicas y 30 días de retención
     @Bean
     public NewTopic auditEventsTopic(AuditKafkaProperties props) {
         return TopicBuilder.name(props.auditTopic())
@@ -117,6 +120,7 @@ public class KafkaConsumerConfig {
                 .build();
     }
 
+    // Dead Letter Topic para eventos de auditoría que fallaron validación o agotaron los 3 reintentos
     @Bean
     public NewTopic auditEventsDltTopic(AuditKafkaProperties props) {
         return TopicBuilder.name(props.auditTopic() + ".DLT")

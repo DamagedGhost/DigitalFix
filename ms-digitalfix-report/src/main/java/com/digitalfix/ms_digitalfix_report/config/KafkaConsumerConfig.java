@@ -95,6 +95,7 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
+    // Admin de Spring Kafka para crear los tópicos si faltan al arrancar (sin tumbar el servicio si Kafka aún parte)
     @Bean
     public KafkaAdmin kafkaAdmin(ReportKafkaProperties props) {
         Map<String, Object> configs = new HashMap<>();
@@ -104,6 +105,7 @@ public class KafkaConsumerConfig {
         return admin;
     }
 
+    // Tópico principal de órdenes: 3 particiones (para concurrency=3), 3 réplicas y 7 días de retención
     @Bean
     public NewTopic workordersEventsTopic(ReportKafkaProperties props) {
         return TopicBuilder.name(props.workordersTopic())
@@ -117,6 +119,7 @@ public class KafkaConsumerConfig {
                 .build();
     }
 
+    // Dead Letter Topic para eventos de órdenes corruptos o que agotaron los 3 reintentos
     @Bean
     public NewTopic workordersEventsDltTopic(ReportKafkaProperties props) {
         return TopicBuilder.name(props.workordersTopic() + ".DLT")

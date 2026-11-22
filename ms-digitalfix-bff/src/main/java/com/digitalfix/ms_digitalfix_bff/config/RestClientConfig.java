@@ -7,9 +7,16 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+/**
+ * Clientes HTTP internos del BFF hacia los 5 microservicios de dominio.
+ * Las URLs vienen desde application.yaml / variables de entorno de Docker Compose
+ * para no dejar IPs ni puertos fijos en el código.
+ */
 @Configuration
 public class RestClientConfig {
 
+    // Interceptor común: toma el header Authorization de la petición original y lo propaga
+    // al microservicio interno por si necesita identificar al usuario autenticado.
     private RestClient.Builder createClientBuilder(String baseUrl) {
         return RestClient.builder()
                 .baseUrl(baseUrl)

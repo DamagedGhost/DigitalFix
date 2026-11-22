@@ -8,6 +8,11 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Crea instancias de AdminClient de Kafka bajo demanda (se abren y cierran con try-with-resources
+ * en KafkaAdminService). Le pongo timeouts cortos (5s / 8s) para que si los brokers están caídos
+ * el endpoint responda 503 rápido y no deje pegada la interfaz web.
+ */
 @Component
 public class KafkaAdminClientFactory {
 
