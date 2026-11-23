@@ -1,10 +1,17 @@
+# ==============================================================================
+# Clúster de Apache Kafka (3 Zookeepers + 3 Brokers + Kafka-UI)
+# Levanto este compose primero porque acá se crea la red bridge "digitalfix-net"
+# que después comparten los microservicios y RabbitMQ del docker-compose raíz.
+# ==============================================================================
 name: digitalfix-kafka
 
+# Plantilla base (YAML anchor) para no repetir imagen, política de reinicio y red en los 3 Zookeepers
 x-zk: &zk
   image: confluentinc/cp-zookeeper:7.6.1
   restart: unless-stopped
   networks: [digitalfix-net]
 
+# Plantilla base para los 3 Brokers Kafka (esperan a que los 3 nodos de Zookeeper estén arriba)
 x-kafka: &kafka
   image: confluentinc/cp-kafka:7.6.1
   restart: unless-stopped
@@ -12,6 +19,12 @@ x-kafka: &kafka
   depends_on: [zk1, zk2, zk3]
 
 services:
+  # ----------------------------------------------------------------------------
+  # ZOOKEEPER (3 nodos: zk1, zk2, zk3)
+  # Uso 3 nodos (número impar) para tener quórum: si se cae 1, los otros 2 mantienen
+  # la mayoría y el clúster sigue eligiendo líderes sin detenerse.
+  # Puerto 2181: clientes (los brokers). Puertos 2888/3888: sincronización y votación entre Zookeepers.
+  # ----------------------------------------------------------------------------
   zk1:
     <<: *zk
     container_name: zk1
@@ -22,7 +35,7 @@ services:
       ZOOKEEPER_INIT_LIMIT: 5
       ZOOKEEPER_SYNC_LIMIT: 2
       ZOOKEEPER_SERVERS: zk1:2888:3888;zk2:2888:3888;zk3:2888:3888
-      KAFKA_HEAP_OPTS: -Xms256M -Xmx256M
+      KAFKA_HEAP_OPTS: -Xms256M -Xmx256M # Limito la RAM a 256MB para que los 17 contenedores entren cómodos en la EC2
 
   zk2:
     <<: *zk
@@ -48,6 +61,12 @@ services:
       ZOOKEEPER_SERVERS: zk1:2888:3888;zk2:2888:3888;zk3:2888:3888
       KAFKA_HEAP_OPTS: -Xms256M -Xmx256M
 
+  # ----------------------------------------------------------------------------
+  # BROKERS KAFKA (3 nodos: kafka1, kafka2, kafka3)
+  # Cada broker expone dos listeners:
+  #  - INTERNAL (29092): para tráfico interno entre contenedores en digitalfix-net (kafka1:29092).
+  #  - EXTERNAL (9092/9093/9094): por si me conecto desde fuera de Docker (localhost o IP de EC2).
+  # ----------------------------------------------------------------------------
   kafka1:
     <<: *kafka
     container_name: kafka1
@@ -60,8 +79,11 @@ services:
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:29092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # Desactivo la autocreación para que ningún consumidor cree tópicos con 1 partición por accidente;
+      # los tópicos reales los crea nuestro código con 3 particiones, 3 réplicas y su retención propia.
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      # Exijo al menos 2 réplicas sincronizadas (ISR) para aceptar escrituras con acks=all
       KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
@@ -108,6 +130,11 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_HEAP_OPTS: -Xms512M -Xmx512M
 
+  # ----------------------------------------------------------------------------
+  # KAFKA-UI (Panel web en puerto 8090)
+  # Se conecta a los 3 brokers por su listener interno (29092) para revisar estado del clúster,
+  # particiones, réplicas, mensajes JSON en vivo y el lag de los consumer groups.
+  # ----------------------------------------------------------------------------
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -120,6 +147,7 @@ services:
       KAFKA_CLUSTERS_0_NAME: digitalfix-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29092,kafka3:29092
 
+# Red bridge propia: la crea este compose al arrancar y el docker-compose.yml raíz se une como external
 networks:
   digitalfix-net:
     name: digitalfix-net

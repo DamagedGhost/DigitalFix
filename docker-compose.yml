@@ -1,6 +1,7 @@
 services:
 
   # ---------- Inicializacion BFF intermediario ----------
+  # Único backend expuesto hacia afuera (8080): valida JWT de Entra ID y rutea por la red interna a los 5 microservicios
   bff:
     build: ./ms-digitalfix-bff
     container_name: bff-app
@@ -19,10 +20,11 @@ services:
       - workorders
       - catalog
       - notify
-      - audit    # NUEVO
-      - report   # NUEVO
+      - audit
+      - report
 
   # ---------- Inicializacion Frontend ----------
+  # SPA en React compilada y servida con Nginx en el puerto 80
   frontend:
     build:
       context: .
@@ -35,6 +37,7 @@ services:
       - bff
 
   # ---------- Inicializacion microservicios: workorders ----------
+  # Gestión de órdenes: usa expose (solo visible en digitalfix-net), guarda en Postgres y publica en RabbitMQ + Kafka (workorders.events)
   workorders:
     build: ./ms-digitalfix-workorders
     container_name: workorders-app
@@ -76,6 +79,7 @@ services:
         condition: service_healthy
 
   # ---------- Inicializacion microservicios: notify ----------
+  # Consumidor de RabbitMQ (email, dispatch, report + DLQ), productor puente hacia Kafka (audit.events) y admin REST de colas/tópicos
   notify:
     build: ./ms-digitalfix-notify
     container_name: notify-app
@@ -89,12 +93,13 @@ services:
       - RABBIT_PORT=5672
       - RABBIT_USER=digitalfix
       - RABBIT_PASS=digitalfix
-      - KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092   # NUEVO
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092
     depends_on:
       rabbitmq:
         condition: service_healthy
 
-  # ---------- NUEVO: consumidor de audit.events (auditoría)
+  # ---------- NUEVO: consumidor de audit.events (auditoría) ----------
+  # Escucha audit.events (groupId: audit-group) y guarda el historial inmutable en Postgres; limito heap a 256MB para cuidar la EC2
   audit:
     build: ./ms-digitalfix-audit
     container_name: audit-app
@@ -111,7 +116,8 @@ services:
       postgres-db:
         condition: service_healthy
 
-  # ---------- NUEVO: consumidor de workorders.events (reportes en vivo)
+  # ---------- NUEVO: consumidor de workorders.events (reportes en vivo) ----------
+  # Escucha workorders.events (groupId: report-group) y actualiza la tabla order_snapshots para KPIs en tiempo real
   report:
     build: ./ms-digitalfix-report
     container_name: report-app
